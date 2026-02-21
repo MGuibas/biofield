@@ -1,0 +1,6 @@
+@BioField.API_HostAddress = http://localhost:5201
+
+GET {{BioField.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
