@@ -1,0 +1,25 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './AuthContext'
+import LoginPage from './pages/LoginPage'
+import ProjectsPage from './pages/ProjectsPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
+
+function Guard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  return user ? <>{children}</> : <Navigate to="/login" replace />
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/projects" element={<Guard><ProjectsPage /></Guard>} />
+          <Route path="/projects/:id" element={<Guard><ProjectDetailPage /></Guard>} />
+          <Route path="*" element={<Navigate to="/projects" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  )
+}

@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioField.API", "BioField.API\BioField.API.csproj", "{1D3C36C0-5647-4473-86A1-466E04A54559}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioField.Application", "BioField.Application\BioField.Application.csproj", "{F9D5F5B3-0FDA-4599-9235-56F3E75A20B5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioField.Domain", "BioField.Domain\BioField.Domain.csproj", "{BB4F4149-9952-4DEA-9F4F-AF1D2997C563}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioField.Infrastructure", "BioField.Infrastructure\BioField.Infrastructure.csproj", "{DEE6F258-F964-4C63-83D5-2EEA35B516A1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1D3C36C0-5647-4473-86A1-466E04A54559}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D3C36C0-5647-4473-86A1-466E04A54559}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D3C36C0-5647-4473-86A1-466E04A54559}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D3C36C0-5647-4473-86A1-466E04A54559}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9D5F5B3-0FDA-4599-9235-56F3E75A20B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9D5F5B3-0FDA-4599-9235-56F3E75A20B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9D5F5B3-0FDA-4599-9235-56F3E75A20B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9D5F5B3-0FDA-4599-9235-56F3E75A20B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB4F4149-9952-4DEA-9F4F-AF1D2997C563}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB4F4149-9952-4DEA-9F4F-AF1D2997C563}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB4F4149-9952-4DEA-9F4F-AF1D2997C563}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB4F4149-9952-4DEA-9F4F-AF1D2997C563}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DEE6F258-F964-4C63-83D5-2EEA35B516A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEE6F258-F964-4C63-83D5-2EEA35B516A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DEE6F258-F964-4C63-83D5-2EEA35B516A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DEE6F258-F964-4C63-83D5-2EEA35B516A1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
