@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BioField.Infrastructure.Services;
 
-public class RouteService(AppDbContext db) : IRouteService
+public class RouteService(AppDbContext db, IStorageService storage) : IRouteService
 {
     public async Task<IEnumerable<RouteResponse>> GetByProjectAsync(Guid projectId, Guid userId)
     {
@@ -51,6 +51,12 @@ public class RouteService(AppDbContext db) : IRouteService
     {
         var route = await db.Routes.FindAsync(routeId) ?? throw new KeyNotFoundException();
         if (route.UserId != userId) throw new UnauthorizedAccessException();
+        
+        if (!string.IsNullOrEmpty(route.GpxFileUrl))
+        {
+            await storage.DeleteAsync(route.GpxFileUrl);
+        }
+
         db.Routes.Remove(route);
         await db.SaveChangesAsync();
     }
@@ -65,7 +71,7 @@ public class RouteService(AppDbContext db) : IRouteService
         new(r.Id, r.ProjectId, r.UserId, r.Name, r.StartedAt, r.EndedAt, r.DistanceMeters, r.GpxFileUrl, r.Notes, r.TrackPointsJson);
 }
 
-public class ObservationService(AppDbContext db) : IObservationService
+public class ObservationService(AppDbContext db, IStorageService storage) : IObservationService
 {
     public async Task<PagedResult<ObservationResponse>> GetByProjectAsync(Guid projectId, Guid userId, int page, int pageSize)
     {
@@ -125,6 +131,30 @@ public class ObservationService(AppDbContext db) : IObservationService
     {
         var obs = await db.Observations.FindAsync(observationId) ?? throw new KeyNotFoundException();
         if (obs.UserId != userId) throw new UnauthorizedAccessException();
+
+        // Borrar foto de habitat si existe
+        if (!string.IsNullOrEmpty(obs.HabitatPhotoUrl))
+        {
+            await storage.DeleteAsync(obs.HabitatPhotoUrl);
+        }
+
+        // Borrar fotos de la lista
+        if (!string.IsNullOrEmpty(obs.PhotosJson))
+        {
+            try
+            {
+                var photos = System.Text.Json.JsonSerializer.Deserialize<List<string>>(obs.PhotosJson);
+                if (photos != null)
+                {
+                    foreach (var photo in photos)
+                    {
+                        await storage.DeleteAsync(photo);
+                    }
+                }
+            }
+            catch { /* Ignorar errores de deserialización en borrado */ }
+        }
+
         db.Observations.Remove(obs);
         await db.SaveChangesAsync();
     }
@@ -278,7 +308,7 @@ public class ObservationService(AppDbContext db) : IObservationService
     }
 }
 
-public class NoteService(AppDbContext db) : INoteService
+public class NoteService(AppDbContext db, IStorageService storage) : INoteService
 {
     public async Task<IEnumerable<NoteResponse>> GetByProjectAsync(Guid projectId, Guid userId)
     {
@@ -314,6 +344,24 @@ public class NoteService(AppDbContext db) : INoteService
     {
         var note = await db.Notes.FindAsync(noteId) ?? throw new KeyNotFoundException();
         if (note.UserId != userId) throw new UnauthorizedAccessException();
+
+        // Borrar adjuntos si existen
+        if (!string.IsNullOrEmpty(note.AttachmentsJson))
+        {
+            try
+            {
+                var attachments = System.Text.Json.JsonSerializer.Deserialize<List<string>>(note.AttachmentsJson);
+                if (attachments != null)
+                {
+                    foreach (var attachment in attachments)
+                    {
+                        await storage.DeleteAsync(attachment);
+                    }
+                }
+            }
+            catch { /* Ignorar */ }
+        }
+
         db.Notes.Remove(note);
         await db.SaveChangesAsync();
     }

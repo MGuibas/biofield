@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BioField.Infrastructure.Services;
 
-public class ProjectService(AppDbContext db) : IProjectService
+public class ProjectService(AppDbContext db, IStorageService storage) : IProjectService
 {
     public async Task<IEnumerable<ProjectResponse>> GetUserProjectsAsync(Guid userId)
     {
@@ -67,6 +67,13 @@ public class ProjectService(AppDbContext db) : IProjectService
             ?? throw new KeyNotFoundException("Project not found.");
 
         EnsureRole(project, userId, ProjectRole.Owner);
+
+        // Borrar imagen de portada si existe
+        if (!string.IsNullOrEmpty(project.CoverImageUrl))
+        {
+            await storage.DeleteAsync(project.CoverImageUrl);
+        }
+
         db.Projects.Remove(project);
         await db.SaveChangesAsync();
     }
