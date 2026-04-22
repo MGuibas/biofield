@@ -1,4 +1,4 @@
-package com.biofield.frontend
+package es.guibas.biofield.frontend
 
 import io.flutter.embedding.android.FlutterActivity
 

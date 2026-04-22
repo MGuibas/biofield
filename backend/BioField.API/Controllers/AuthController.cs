@@ -10,17 +10,10 @@ namespace BioField.API.Controllers;
 [Route("api/auth")]
 public class AuthController(IAuthService authService) : ControllerBase
 {
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleLogin(GoogleLoginRequest request)
     {
-        try { return Ok(await authService.RegisterAsync(request)); }
-        catch (InvalidOperationException ex) { return Conflict(ex.Message); }
-    }
-
-    [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequest request)
-    {
-        try { return Ok(await authService.LoginAsync(request)); }
+        try { return Ok(await authService.GoogleLoginAsync(request)); }
         catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
     }
 

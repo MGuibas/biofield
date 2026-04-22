@@ -100,7 +100,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   radius: 52,
                   backgroundColor: Colors.green.shade100,
                   backgroundImage: user?.avatarUrl != null
-                      ? NetworkImage('$baseUrl${user!.avatarUrl}')
+                      ? NetworkImage('$baseUrl${user!.avatarUrl}?v=${DateTime.now().minute}')
                       : null,
                   child: user?.avatarUrl == null
                       ? Text(

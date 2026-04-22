@@ -178,6 +178,10 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
           } catch (_) {}
         }
       }
+      if (widget.existing != null) {
+        ref.invalidate(observationDetailProvider(widget.existing!.id));
+        ref.invalidate(activityProvider(widget.projectId));
+      }
       ref.invalidate(observationsProvider(widget.projectId));
       ref.invalidate(observationsPageProvider((projectId: widget.projectId, page: 1)));
       if (mounted) context.pop();
@@ -193,6 +197,10 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
         notes:      _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         quantity:   _quantity,
       );
+      if (widget.existing != null) {
+        ref.invalidate(observationDetailProvider(widget.existing!.id));
+        ref.invalidate(activityProvider(widget.projectId));
+      }
       ref.invalidate(observationsProvider(widget.projectId));
       ref.invalidate(observationsPageProvider((projectId: widget.projectId, page: 1)));
       if (mounted) context.pop();
@@ -356,7 +364,7 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
                   child: _habitatPhoto != null
                       ? Image.file(_habitatPhoto!, height: 140, width: double.infinity, fit: BoxFit.cover)
                       : Image.network(
-                          _existingHabitatPhoto!,
+                          _existingHabitatPhoto!.startsWith('http') ? _existingHabitatPhoto! : 'https://fotos.guibas.es/biofield/${_existingHabitatPhoto!}',
                           height: 140, width: double.infinity, fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(height: 140, color: Colors.grey.shade200, child: const Icon(Icons.broken_image)),
                         ),

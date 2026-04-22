@@ -19,9 +19,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; });
     try {
-      await ref.read(authProvider.notifier).login(_email.text.trim(), _password.text);
+      await ref.read(authProvider.notifier).loginWithGoogle();
     } catch (e) {
-      setState(() => _error = 'Email o contraseña incorrectos');
+      setState(() => _error = 'Error: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -40,22 +40,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const Icon(Icons.eco, size: 64, color: Color(0xFF2E7D32)),
               const SizedBox(height: 8),
               Text('BioField', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-              const SizedBox(height: 32),
-              TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()), keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: 16),
-              TextField(controller: _password, decoration: const InputDecoration(labelText: 'Contraseña', border: OutlineInputBorder()), obscureText: true),
+              const SizedBox(height: 48),
               if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
+                Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
               ],
-              const SizedBox(height: 24),
-              FilledButton(
+              FilledButton.icon(
                 onPressed: _loading ? null : _login,
-                child: _loading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Iniciar sesión'),
-              ),
-              TextButton(
-                onPressed: () => context.go('/auth/register'),
-                child: const Text('¿No tienes cuenta? Regístrate'),
+                icon: _loading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.g_mobiledata, size: 32,),
+                label: const Text('Continuar con Google', style: TextStyle(fontSize: 18)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Colors.black12)),
+                ),
               ),
             ],
           ),

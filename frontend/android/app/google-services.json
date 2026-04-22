@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "263021632716",
+    "project_id": "bioflield",
+    "storage_bucket": "bioflield.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:263021632716:android:7e93ae19732dac7ea1f669",
+        "android_client_info": {
+          "package_name": "es.guibas.biofield.frontend"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "263021632716-93j7dhv1r9dhnctn4k7kjkt486t2asqr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "es.guibas.biofield.frontend",
+            "certificate_hash": "895f2c859b3ce4b9126a3a0f3087b7d5904cb0a1"
+          }
+        },
+        {
+          "client_id": "263021632716-use8dditvp14lu0eiboqpia0bn011uap.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdC1EoFU9EGGlfK3dZdOIroaLUd2Q4rz0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "263021632716-use8dditvp14lu0eiboqpia0bn011uap.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

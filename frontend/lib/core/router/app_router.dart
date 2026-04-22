@@ -4,7 +4,6 @@ import '../../data/remote/providers.dart';
 import '../../domain/models/models.dart';
 import '../../presentation/projects/project_map_screen.dart';
 import '../../presentation/auth/login_screen.dart';
-import '../../presentation/auth/register_screen.dart';
 import '../../presentation/projects/projects_screen.dart';
 import '../../presentation/projects/project_detail_screen.dart';
 import '../../presentation/observations/observation_form_screen.dart';
@@ -13,22 +12,38 @@ import '../../presentation/routes/route_recording_screen.dart';
 import '../../presentation/routes/route_detail_screen.dart';
 import '../../presentation/notes/note_form_screen.dart';
 import '../../presentation/auth/profile_screen.dart';
+import '../../presentation/auth/splash_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/projects',
+    initialLocation: '/splash',
     redirect: (context, state) {
+      final authNotifier = ref.read(authProvider.notifier);
       final loggedIn = auth != null;
+      final initialized = authNotifier.initialized;
+      
+      final onSplash = state.matchedLocation == '/splash';
       final onAuth = state.matchedLocation.startsWith('/auth');
-      if (!loggedIn && !onAuth) return '/auth/login';
-      if (loggedIn && onAuth) return '/projects';
-      return null;
+
+      // Mientras no esté inicializado, forzar estancia en Splash
+      if (!initialized) return onSplash ? null : '/splash';
+
+      // Una vez inicializado:
+      if (!loggedIn) {
+        // No logueado: ir a login
+        if (onAuth) return null;
+        return '/auth/login';
+      } else {
+        // Logueado: no permitir login/splash, ir a proyectos
+        if (onAuth || onSplash) return '/projects';
+        return null;
+      }
     },
     routes: [
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/auth/login',    builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/auth/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       GoRoute(
         path: '/projects',

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../domain/models/models.dart';
 import '../local/local_db.dart';
 import '../sync/sync_service.dart';
@@ -23,6 +24,9 @@ final authProvider = StateNotifierProvider<AuthNotifier, UserModel?>(
 
 class AuthNotifier extends StateNotifier<UserModel?> {
   final Dio _dio;
+  bool _initialized = false;
+  bool get initialized => _initialized;
+
   AuthNotifier(this._dio) : super(null) {
     _restore();
   }
@@ -62,21 +66,22 @@ class AuthNotifier extends StateNotifier<UserModel?> {
         await _storage.deleteAll();
       }
     }
+    _initialized = true;
+    // Forzado: Notificar cambio de estado aunque sea null para que el router reaccione
+    if (state == null) state = null; 
   }
 
-  Future<void> login(String email, String password) async {
-    final res = await _dio.post('/auth/login', data: {'email': email, 'password': password});
-    final user = UserModel.fromJson(res.data);
-    await _save(user);
-    state = user;
-  }
+  Future<void> loginWithGoogle() async {
+    final googleSignIn = GoogleSignIn(
+      serverClientId: '263021632716-use8dditvp14lu0eiboqpia0bn011uap.apps.googleusercontent.com',
+    );
+    final account = await googleSignIn.signIn();
+    if (account == null) throw Exception('Google SignIn cancaled');
+    
+    final auth = await account.authentication;
+    if (auth.idToken == null) throw Exception('No Google ID Token found');
 
-  Future<void> register(String email, String password, String displayName) async {
-    final res = await _dio.post('/auth/register', data: {
-      'email': email,
-      'password': password,
-      'displayName': displayName,
-    });
+    final res = await _dio.post('/auth/google', data: {'idToken': auth.idToken});
     final user = UserModel.fromJson(res.data);
     await _save(user);
     state = user;
@@ -214,6 +219,12 @@ final observationsProvider = FutureProvider.family<List<ObservationModel>, Strin
       queryParameters: {'page': 1, 'pageSize': 200});
   final j = res.data as Map<String, dynamic>;
   return (j['items'] as List).map((e) => ObservationModel.fromJson(e)).toList();
+});
+
+final observationDetailProvider = FutureProvider.family<ObservationModel, String>((ref, id) async {
+  final dio = ref.watch(dioProvider);
+  final res = await dio.get('/observations/$id');
+  return ObservationModel.fromJson(res.data);
 });
 
 // ── COMMENTS ──────────────────────────────────────────────────────────────────

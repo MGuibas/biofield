@@ -14,33 +14,43 @@ namespace BioField.Infrastructure.Services;
 
 public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
 {
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    public async Task<AuthResponse> GoogleLoginAsync(GoogleLoginRequest request)
     {
-        if (await db.Users.AnyAsync(u => u.Email == request.Email))
-            throw new InvalidOperationException("Email already in use.");
-
-        var user = new User
+        Google.Apis.Auth.GoogleJsonWebSignature.Payload payload;
+        try
         {
-            Id = Guid.NewGuid(),
-            Email = request.Email.ToLower(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            DisplayName = request.DisplayName
-        };
+            payload = await Google.Apis.Auth.GoogleJsonWebSignature.ValidateAsync(request.IdToken, new Google.Apis.Auth.GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { config["Authentication:Google:ClientId"] }
+            });
+        }
+        catch (Google.Apis.Auth.InvalidJwtException)
+        {
+            throw new UnauthorizedAccessException("Invalid or expired Google token.");
+        }
 
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
-        return await GenerateTokensAsync(user);
-    }
+        var email = payload.Email.ToLower();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-    public async Task<AuthResponse> LoginAsync(LoginRequest request)
-    {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.ToLower())
-            ?? throw new UnauthorizedAccessException("Invalid credentials.");
+        if (user == null)
+        {
+            user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                GoogleId = payload.Subject,
+                DisplayName = payload.Name,
+                AvatarUrl = payload.Picture
+            };
+            db.Users.Add(user);
+        }
+        else
+        {
+            user.GoogleId = payload.Subject;
+            user.LastLogin = DateTime.UtcNow;
+            if (string.IsNullOrEmpty(user.AvatarUrl)) user.AvatarUrl = payload.Picture;
+        }
 
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("Invalid credentials.");
-
-        user.LastLogin = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return await GenerateTokensAsync(user);
     }

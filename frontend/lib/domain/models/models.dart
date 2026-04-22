@@ -242,27 +242,60 @@ class CommentModel {
 }
 
 class ActivityItemModel {
+  final String? id; // Activity log id itself
+  final String? itemId; // Target object id (observation id, etc)
   final String type;
   final String actorName;
   final String? avatarUrl;
+  final String? actorAvatarUrl;
+  final String? photoUrl;
   final String description;
   final DateTime occurredAt;
 
   ActivityItemModel({
+    this.id,
+    this.itemId,
     required this.type,
     required this.actorName,
     this.avatarUrl,
+    this.actorAvatarUrl,
+    this.photoUrl,
     required this.description,
     required this.occurredAt,
   });
 
-  factory ActivityItemModel.fromJson(Map<String, dynamic> j) => ActivityItemModel(
-        type: j['type'],
-        actorName: j['actorName'],
-        avatarUrl: j['avatarUrl'],
-        description: j['description'],
-        occurredAt: DateTime.parse(j['occurredAt']),
-      );
+  factory ActivityItemModel.fromJson(Map<String, dynamic> j) {
+    String? extractPhoto(Map<String, dynamic> map) {
+      if (map['photoUrl'] != null) return map['photoUrl'].toString();
+      if (map['itemPhotoUrl'] != null) return map['itemPhotoUrl'].toString();
+      if (map['observationPhotoUrl'] != null) return map['observationPhotoUrl'].toString();
+      if (map['habitatPhotoUrl'] != null) return map['habitatPhotoUrl'].toString();
+      if (map['photo'] != null) return map['photo'].toString();
+      if (map['image'] != null) return map['image'].toString();
+      
+      // Check photosJson if it exists and pick first
+      final pjson = map['photosJson'];
+      if (pjson != null && pjson is String && pjson.isNotEmpty) {
+        try {
+          final list = jsonDecode(pjson) as List;
+          if (list.isNotEmpty) return list.first.toString();
+        } catch (_) {}
+      }
+      return null;
+    }
+
+    return ActivityItemModel(
+      id: j['id']?.toString(),
+      itemId: j['itemId']?.toString() ?? j['targetId']?.toString() ?? j['observationId']?.toString(),
+      type: j['type'],
+      actorName: j['actorName'],
+      avatarUrl: j['avatarUrl'] ?? j['actorAvatarUrl'],
+      actorAvatarUrl: j['actorAvatarUrl'] ?? j['avatarUrl'],
+      photoUrl: extractPhoto(j),
+      description: j['description'],
+      occurredAt: DateTime.parse(j['occurredAt']),
+    );
+  }
 }
 
 class MemberModel {
