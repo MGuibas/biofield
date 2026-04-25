@@ -21,17 +21,29 @@ class RouteRecordingScreen extends ConsumerStatefulWidget {
 class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> with SingleTickerProviderStateMixin {
   final _mapController = MapController();
   bool _saving = false;
-  bool _isSatellite = false; // Toggle para satélite
+  bool _isSatellite = false;
   late AnimationController _pulseController;
+  LatLng? _userLocation;
 
   @override
   void initState() {
     super.initState();
-    Geolocator.requestPermission();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
+    _goToCurrentLocation();
+  }
+
+  Future<void> _goToCurrentLocation() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.best, timeLimit: Duration(seconds: 8)),
+      );
+      final loc = LatLng(pos.latitude, pos.longitude);
+      setState(() => _userLocation = loc);
+      _mapController.move(loc, 17);
+    } catch (_) {}
   }
 
   @override
@@ -122,7 +134,7 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: points.isNotEmpty ? points.last : const LatLng(40.4168, -3.7038),
+              initialCenter: points.isNotEmpty ? points.last : (_userLocation ?? const LatLng(40.4168, -3.7038)),
               initialZoom: 17,
               interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
             ),
@@ -155,6 +167,16 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
                     ),
                   ],
                 ),
+              ] else if (_userLocation != null) ...[
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _userLocation!,
+                      width: 60, height: 60,
+                      child: _PulseMarker(controller: _pulseController),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),
@@ -165,19 +187,44 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
           if (rec.active)
             Positioned(
               top: 50, left: 16, right: 16,
-              child: _GlassContainer(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      _StatItem(label: 'TIEMPO', value: rec.elapsed, icon: Icons.timer_outlined),
-                      _vDivider(),
-                      _StatItem(label: 'DISTANCIA', value: '${(rec.distanceMeters / 1000).toStringAsFixed(2)} km', icon: Icons.straighten_rounded),
-                      _vDivider(),
-                      _StatItem(label: 'PUNTOS', value: '${points.length}', icon: Icons.gps_fixed_rounded),
-                    ],
+              child: Column(
+                children: [
+                  _GlassContainer(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          _StatItem(label: 'TIEMPO', value: rec.elapsed, icon: Icons.timer_outlined),
+                          _vDivider(),
+                          _StatItem(label: 'DISTANCIA', value: '${(rec.distanceMeters / 1000).toStringAsFixed(2)} km', icon: Icons.straighten_rounded),
+                          _vDivider(),
+                          _StatItem(label: 'PUNTOS', value: '${points.length}', icon: Icons.gps_fixed_rounded),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  _GlassContainer(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          _StatItem(label: 'RUMBO', value: '${rec.headingCardinal} ${rec.heading?.toStringAsFixed(0) ?? "--"}°', icon: Icons.explore_outlined),
+                          _vDivider(),
+                          _StatItem(label: 'VELOCIDAD', value: '${rec.speedKmh} km/h', icon: Icons.speed_outlined),
+                          _vDivider(),
+                          _StatItem(
+                            label: 'GPS',
+                            value: rec.accuracy != null ? '±${rec.accuracy!.toStringAsFixed(0)}m' : '--',
+                            icon: rec.accuracy != null && rec.accuracy! < 10
+                                ? Icons.gps_fixed
+                                : Icons.gps_not_fixed,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -192,7 +239,7 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
 
           // Controles de Mapa (Lado Derecho)
           Positioned(
-            top: rec.active ? 140 : 50, right: 16,
+            top: rec.active ? 200 : 50, right: 16,
             child: Column(
               children: [
                 _MapControl(
@@ -205,6 +252,8 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
                   onTap: () {
                     if (points.isNotEmpty) {
                       _mapController.move(points.last, 17);
+                    } else {
+                      _goToCurrentLocation();
                     }
                   },
                 ),

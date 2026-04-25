@@ -453,7 +453,7 @@ class _CommentFieldState extends ConsumerState<_CommentField> {
     if (text.isEmpty) return;
     setState(() => _loading = true);
     try {
-      await ref.read(dioProvider).post('/observations/${widget.observationId}/comments', data: {'content': text});
+      await ref.read(dioProvider).post('/observations/${widget.observationId}/comments', data: {'body': text});
       _ctrl.clear();
       ref.invalidate(commentsProvider(widget.observationId));
     } catch (e) {
@@ -494,15 +494,12 @@ class _CommentFieldState extends ConsumerState<_CommentField> {
 String _avatarUrl(String url, DateTime? dt) {
   if (url.startsWith('http')) return url;
   final cleanUrl = url.startsWith('/') ? url : '/$url';
-  final timestamp = dt != null ? '?v=${dt.millisecondsSinceEpoch}' : '';
-  return 'https://api.guibas.es$cleanUrl$timestamp';
+  return 'https://api.guibas.es$cleanUrl';
 }
 
 String _timeAgo(DateTime dt) {
   final localDt = dt.isUtc ? dt.toLocal() : dt;
-  final diff = DateTime.now().difference(localDt);
-  if (diff.inSeconds < 60) return 'hace un momento';
-  if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
-  if (diff.inHours < 24) return 'hace ${diff.inHours} h';
-  return '${dt.day}/${dt.month}/${dt.year}';
+  final h = localDt.hour.toString().padLeft(2, '0');
+  final m = localDt.minute.toString().padLeft(2, '0');
+  return '${localDt.day}/${localDt.month}/${localDt.year} $h:$m';
 }

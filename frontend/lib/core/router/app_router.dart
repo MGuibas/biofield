@@ -13,15 +13,16 @@ import '../../presentation/routes/route_detail_screen.dart';
 import '../../presentation/notes/note_form_screen.dart';
 import '../../presentation/auth/profile_screen.dart';
 import '../../presentation/auth/splash_screen.dart';
+import '../../presentation/identify/species_identifier_screen.dart';
+import '../../presentation/planning/map_planning_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
+  final loggedIn = ref.watch(authProvider.select((u) => u != null));
 
   return GoRouter(
     initialLocation: '/splash',
     redirect: (context, state) {
       final authNotifier = ref.read(authProvider.notifier);
-      final loggedIn = auth != null;
       final initialized = authNotifier.initialized;
       
       final onSplash = state.matchedLocation == '/splash';
@@ -45,6 +46,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/auth/login',    builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+      GoRoute(path: '/identify', builder: (_, __) => const SpeciesIdentifierScreen()),
+      GoRoute(path: '/planning', builder: (_, __) => const MapPlanningScreen()),
       GoRoute(
         path: '/projects',
         builder: (_, __) => const ProjectsScreen(),

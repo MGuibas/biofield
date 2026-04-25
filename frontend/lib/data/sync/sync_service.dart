@@ -110,6 +110,12 @@ class SyncService {
     required DateTime observedAt,
     String? notes,
     int quantity = 1,
+    String? title,
+    String? description,
+    String? weatherCondition,
+    double? temperature,
+    double? humidity,
+    String? habitatDescription,
   }) async {
     final id = const Uuid().v4();
     final now = DateTime.now();
@@ -126,6 +132,12 @@ class SyncService {
       notes: Value(notes),
       quantity: Value(quantity),
       createdAt: Value(now),
+      title: Value(title),
+      description: Value(description),
+      weatherCondition: Value(weatherCondition),
+      temperature: Value(temperature),
+      humidity: Value(humidity),
+      habitatDescription: Value(habitatDescription),
     ));
 
     await _db.enqueue(SyncQueueCompanion(
@@ -142,9 +154,48 @@ class SyncService {
         'observedAt': observedAt.toIso8601String(),
         'notes': notes,
         'quantity': quantity,
+        'title': title,
+        'description': description,
+        'weatherCondition': weatherCondition,
+        'temperature': temperature,
+        'humidity': humidity,
+        'habitatDescription': habitatDescription,
       })),
       createdAt: Value(now),
     ));
+  }
+
+  Future<void> migrateGuestObservations(String targetProjectId) async {
+    final guestObs = await _db.getObservations('OFFLINE_GUEST');
+    for (final obs in guestObs) {
+      final now = DateTime.now();
+      // Encolar para el nuevo proyecto
+      await _db.enqueue(SyncQueueCompanion(
+        entityType: const Value('observation'),
+        entityId: Value(obs.id),
+        operation: const Value('create'),
+        payload: Value(jsonEncode({
+          'projectId': targetProjectId,
+          'taxonName': obs.taxonName,
+          'taxonId': obs.taxonId,
+          'latitude': obs.latitude,
+          'longitude': obs.longitude,
+          'altitude': obs.altitude,
+          'observedAt': obs.observedAt.toIso8601String(),
+          'notes': obs.notes,
+          'quantity': obs.quantity,
+          'title': obs.title,
+          'description': obs.description,
+          'weatherCondition': obs.weatherCondition,
+          'temperature': obs.temperature,
+          'humidity': obs.humidity,
+          'habitatDescription': obs.habitatDescription,
+        })),
+        createdAt: Value(now),
+      ));
+      // Actualizar localmente o borrar
+      await (_db.delete(_db.localObservations)..where((o) => o.id.equals(obs.id))).go();
+    }
   }
 
   // Guarda ruta local y encola para sync

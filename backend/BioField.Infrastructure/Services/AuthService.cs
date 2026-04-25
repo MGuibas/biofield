@@ -95,10 +95,18 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         var user = await db.Users.FindAsync(userId) ?? throw new KeyNotFoundException();
         var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
         Directory.CreateDirectory(uploadsDir);
+        
+        // Borrar foto antigua por si cambia la extensión (ej. tenía .png y sube .jpg)
+        var existingFiles = Directory.GetFiles(uploadsDir, $"{userId}.*");
+        foreach (var file in existingFiles)
+        {
+            File.Delete(file);
+        }
+
         var fileName = $"{userId}{extension}";
         var bytes = Convert.FromBase64String(base64Image);
         await File.WriteAllBytesAsync(Path.Combine(uploadsDir, fileName), bytes);
-        user.AvatarUrl = $"/avatars/{fileName}";
+        user.AvatarUrl = $"/avatars/{fileName}?v={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
         await db.SaveChangesAsync();
         return user.AvatarUrl;
     }

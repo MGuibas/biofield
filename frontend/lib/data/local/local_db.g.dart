@@ -1852,6 +1852,362 @@ class LocalNotesCompanion extends UpdateCompanion<LocalNote> {
   }
 }
 
+class $LocalProjectsTable extends LocalProjects
+    with TableInfo<$LocalProjectsTable, LocalProject> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalProjectsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _descriptionMeta =
+      const VerificationMeta('description');
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+      'description', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _shareCodeMeta =
+      const VerificationMeta('shareCode');
+  @override
+  late final GeneratedColumn<String> shareCode = GeneratedColumn<String>(
+      'share_code', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _isArchivedMeta =
+      const VerificationMeta('isArchived');
+  @override
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+      'is_archived', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_archived" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _memberCountMeta =
+      const VerificationMeta('memberCount');
+  @override
+  late final GeneratedColumn<int> memberCount = GeneratedColumn<int>(
+      'member_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, description, shareCode, isArchived, memberCount];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_projects';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalProject> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+          _descriptionMeta,
+          description.isAcceptableOrUnknown(
+              data['description']!, _descriptionMeta));
+    }
+    if (data.containsKey('share_code')) {
+      context.handle(_shareCodeMeta,
+          shareCode.isAcceptableOrUnknown(data['share_code']!, _shareCodeMeta));
+    } else if (isInserting) {
+      context.missing(_shareCodeMeta);
+    }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+          _isArchivedMeta,
+          isArchived.isAcceptableOrUnknown(
+              data['is_archived']!, _isArchivedMeta));
+    }
+    if (data.containsKey('member_count')) {
+      context.handle(
+          _memberCountMeta,
+          memberCount.isAcceptableOrUnknown(
+              data['member_count']!, _memberCountMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalProject map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalProject(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      description: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}description']),
+      shareCode: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}share_code'])!,
+      isArchived: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_archived'])!,
+      memberCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}member_count'])!,
+    );
+  }
+
+  @override
+  $LocalProjectsTable createAlias(String alias) {
+    return $LocalProjectsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalProject extends DataClass implements Insertable<LocalProject> {
+  final String id;
+  final String name;
+  final String? description;
+  final String shareCode;
+  final bool isArchived;
+  final int memberCount;
+  const LocalProject(
+      {required this.id,
+      required this.name,
+      this.description,
+      required this.shareCode,
+      required this.isArchived,
+      required this.memberCount});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['share_code'] = Variable<String>(shareCode);
+    map['is_archived'] = Variable<bool>(isArchived);
+    map['member_count'] = Variable<int>(memberCount);
+    return map;
+  }
+
+  LocalProjectsCompanion toCompanion(bool nullToAbsent) {
+    return LocalProjectsCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      shareCode: Value(shareCode),
+      isArchived: Value(isArchived),
+      memberCount: Value(memberCount),
+    );
+  }
+
+  factory LocalProject.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalProject(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      shareCode: serializer.fromJson<String>(json['shareCode']),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
+      memberCount: serializer.fromJson<int>(json['memberCount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'shareCode': serializer.toJson<String>(shareCode),
+      'isArchived': serializer.toJson<bool>(isArchived),
+      'memberCount': serializer.toJson<int>(memberCount),
+    };
+  }
+
+  LocalProject copyWith(
+          {String? id,
+          String? name,
+          Value<String?> description = const Value.absent(),
+          String? shareCode,
+          bool? isArchived,
+          int? memberCount}) =>
+      LocalProject(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        description: description.present ? description.value : this.description,
+        shareCode: shareCode ?? this.shareCode,
+        isArchived: isArchived ?? this.isArchived,
+        memberCount: memberCount ?? this.memberCount,
+      );
+  LocalProject copyWithCompanion(LocalProjectsCompanion data) {
+    return LocalProject(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      description:
+          data.description.present ? data.description.value : this.description,
+      shareCode: data.shareCode.present ? data.shareCode.value : this.shareCode,
+      isArchived:
+          data.isArchived.present ? data.isArchived.value : this.isArchived,
+      memberCount:
+          data.memberCount.present ? data.memberCount.value : this.memberCount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalProject(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('shareCode: $shareCode, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('memberCount: $memberCount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, description, shareCode, isArchived, memberCount);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalProject &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.shareCode == this.shareCode &&
+          other.isArchived == this.isArchived &&
+          other.memberCount == this.memberCount);
+}
+
+class LocalProjectsCompanion extends UpdateCompanion<LocalProject> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<String> shareCode;
+  final Value<bool> isArchived;
+  final Value<int> memberCount;
+  final Value<int> rowid;
+  const LocalProjectsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.shareCode = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    this.memberCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalProjectsCompanion.insert({
+    required String id,
+    required String name,
+    this.description = const Value.absent(),
+    required String shareCode,
+    this.isArchived = const Value.absent(),
+    this.memberCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        shareCode = Value(shareCode);
+  static Insertable<LocalProject> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? shareCode,
+    Expression<bool>? isArchived,
+    Expression<int>? memberCount,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (shareCode != null) 'share_code': shareCode,
+      if (isArchived != null) 'is_archived': isArchived,
+      if (memberCount != null) 'member_count': memberCount,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalProjectsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String?>? description,
+      Value<String>? shareCode,
+      Value<bool>? isArchived,
+      Value<int>? memberCount,
+      Value<int>? rowid}) {
+    return LocalProjectsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      shareCode: shareCode ?? this.shareCode,
+      isArchived: isArchived ?? this.isArchived,
+      memberCount: memberCount ?? this.memberCount,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (shareCode.present) {
+      map['share_code'] = Variable<String>(shareCode.value);
+    }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
+    }
+    if (memberCount.present) {
+      map['member_count'] = Variable<int>(memberCount.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalProjectsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('shareCode: $shareCode, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('memberCount: $memberCount, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncQueueTable extends SyncQueue
     with TableInfo<$SyncQueueTable, SyncQueueData> {
   @override
@@ -2234,13 +2590,14 @@ abstract class _$LocalDb extends GeneratedDatabase {
       $LocalObservationsTable(this);
   late final $LocalRoutesTable localRoutes = $LocalRoutesTable(this);
   late final $LocalNotesTable localNotes = $LocalNotesTable(this);
+  late final $LocalProjectsTable localProjects = $LocalProjectsTable(this);
   late final $SyncQueueTable syncQueue = $SyncQueueTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [localObservations, localRoutes, localNotes, syncQueue];
+      [localObservations, localRoutes, localNotes, localProjects, syncQueue];
 }
 
 typedef $$LocalObservationsTableCreateCompanionBuilder
@@ -3090,6 +3447,194 @@ typedef $$LocalNotesTableProcessedTableManager = ProcessedTableManager<
     (LocalNote, BaseReferences<_$LocalDb, $LocalNotesTable, LocalNote>),
     LocalNote,
     PrefetchHooks Function()>;
+typedef $$LocalProjectsTableCreateCompanionBuilder = LocalProjectsCompanion
+    Function({
+  required String id,
+  required String name,
+  Value<String?> description,
+  required String shareCode,
+  Value<bool> isArchived,
+  Value<int> memberCount,
+  Value<int> rowid,
+});
+typedef $$LocalProjectsTableUpdateCompanionBuilder = LocalProjectsCompanion
+    Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String?> description,
+  Value<String> shareCode,
+  Value<bool> isArchived,
+  Value<int> memberCount,
+  Value<int> rowid,
+});
+
+class $$LocalProjectsTableFilterComposer
+    extends Composer<_$LocalDb, $LocalProjectsTable> {
+  $$LocalProjectsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get shareCode => $composableBuilder(
+      column: $table.shareCode, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get memberCount => $composableBuilder(
+      column: $table.memberCount, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalProjectsTableOrderingComposer
+    extends Composer<_$LocalDb, $LocalProjectsTable> {
+  $$LocalProjectsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get shareCode => $composableBuilder(
+      column: $table.shareCode, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get memberCount => $composableBuilder(
+      column: $table.memberCount, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalProjectsTableAnnotationComposer
+    extends Composer<_$LocalDb, $LocalProjectsTable> {
+  $$LocalProjectsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => column);
+
+  GeneratedColumn<String> get shareCode =>
+      $composableBuilder(column: $table.shareCode, builder: (column) => column);
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => column);
+
+  GeneratedColumn<int> get memberCount => $composableBuilder(
+      column: $table.memberCount, builder: (column) => column);
+}
+
+class $$LocalProjectsTableTableManager extends RootTableManager<
+    _$LocalDb,
+    $LocalProjectsTable,
+    LocalProject,
+    $$LocalProjectsTableFilterComposer,
+    $$LocalProjectsTableOrderingComposer,
+    $$LocalProjectsTableAnnotationComposer,
+    $$LocalProjectsTableCreateCompanionBuilder,
+    $$LocalProjectsTableUpdateCompanionBuilder,
+    (
+      LocalProject,
+      BaseReferences<_$LocalDb, $LocalProjectsTable, LocalProject>
+    ),
+    LocalProject,
+    PrefetchHooks Function()> {
+  $$LocalProjectsTableTableManager(_$LocalDb db, $LocalProjectsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalProjectsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalProjectsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalProjectsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String?> description = const Value.absent(),
+            Value<String> shareCode = const Value.absent(),
+            Value<bool> isArchived = const Value.absent(),
+            Value<int> memberCount = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalProjectsCompanion(
+            id: id,
+            name: name,
+            description: description,
+            shareCode: shareCode,
+            isArchived: isArchived,
+            memberCount: memberCount,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            Value<String?> description = const Value.absent(),
+            required String shareCode,
+            Value<bool> isArchived = const Value.absent(),
+            Value<int> memberCount = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalProjectsCompanion.insert(
+            id: id,
+            name: name,
+            description: description,
+            shareCode: shareCode,
+            isArchived: isArchived,
+            memberCount: memberCount,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalProjectsTableProcessedTableManager = ProcessedTableManager<
+    _$LocalDb,
+    $LocalProjectsTable,
+    LocalProject,
+    $$LocalProjectsTableFilterComposer,
+    $$LocalProjectsTableOrderingComposer,
+    $$LocalProjectsTableAnnotationComposer,
+    $$LocalProjectsTableCreateCompanionBuilder,
+    $$LocalProjectsTableUpdateCompanionBuilder,
+    (
+      LocalProject,
+      BaseReferences<_$LocalDb, $LocalProjectsTable, LocalProject>
+    ),
+    LocalProject,
+    PrefetchHooks Function()>;
 typedef $$SyncQueueTableCreateCompanionBuilder = SyncQueueCompanion Function({
   Value<int> id,
   required String entityType,
@@ -3289,6 +3834,8 @@ class $LocalDbManager {
       $$LocalRoutesTableTableManager(_db, _db.localRoutes);
   $$LocalNotesTableTableManager get localNotes =>
       $$LocalNotesTableTableManager(_db, _db.localNotes);
+  $$LocalProjectsTableTableManager get localProjects =>
+      $$LocalProjectsTableTableManager(_db, _db.localProjects);
   $$SyncQueueTableTableManager get syncQueue =>
       $$SyncQueueTableTableManager(_db, _db.syncQueue);
 }

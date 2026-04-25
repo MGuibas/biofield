@@ -64,6 +64,18 @@ class LocalNotes extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class LocalProjects extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get shareCode => text()();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  IntColumn get memberCount => integer().withDefault(const Constant(1))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class SyncQueue extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get entityType => text()();
@@ -76,12 +88,12 @@ class SyncQueue extends Table {
 
 // ── DATABASE ──────────────────────────────────────────────────────────────────
 
-@DriftDatabase(tables: [LocalObservations, LocalRoutes, LocalNotes, SyncQueue])
+@DriftDatabase(tables: [LocalObservations, LocalRoutes, LocalNotes, LocalProjects, SyncQueue])
 class LocalDb extends _$LocalDb {
   LocalDb() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -96,6 +108,9 @@ class LocalDb extends _$LocalDb {
         await m.addColumn(localObservations, localObservations.humidity);
         await m.addColumn(localObservations, localObservations.habitatDescription);
         await m.addColumn(localObservations, localObservations.habitatPhotoUrl);
+      }
+      if (from < 3) {
+        await m.createTable(localProjects);
       }
     },
   );
@@ -113,6 +128,12 @@ class LocalDb extends _$LocalDb {
 
   Future<void> upsertRoute(LocalRoutesCompanion r) =>
       into(localRoutes).insertOnConflictUpdate(r);
+
+  // Projects
+  Future<List<LocalProject>> getLocalProjects() => select(localProjects).get();
+
+  Future<void> upsertProject(LocalProjectsCompanion p) =>
+      into(localProjects).insertOnConflictUpdate(p);
 
   // Notes
   Future<List<LocalNote>> getNotes(String projectId) =>

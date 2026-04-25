@@ -36,7 +36,11 @@ class AuthNotifier extends StateNotifier<UserModel?> {
     final userId = await _storage.read(key: 'user_id');
     final displayName = await _storage.read(key: 'display_name');
     final refreshToken = await _storage.read(key: 'refresh_token');
-    if (token != null && userId != null) {
+    final isGuest = await _storage.read(key: 'is_guest') == 'true';
+
+    if (isGuest) {
+      state = UserModel(userId: 'guest', displayName: 'Invitado', isGuest: true);
+    } else if (token != null && userId != null) {
       // Intentar refrescar el token al arrancar para asegurar que es válido
       try {
         if (refreshToken != null && refreshToken.isNotEmpty) {
@@ -46,11 +50,35 @@ class AuthNotifier extends StateNotifier<UserModel?> {
           );
           final newToken = res.data['accessToken'] as String;
           final newRefresh = res.data['refreshToken'] as String;
+          final newAvatarUrl = res.data['avatarUrl'] as String?;
+          
           await _storage.write(key: 'access_token', value: newToken);
           await _storage.write(key: 'refresh_token', value: newRefresh);
+          if (newAvatarUrl != null) await _storage.write(key: 'avatar_url', value: newAvatarUrl);
+
           state = UserModel(
             accessToken: newToken,
             refreshToken: newRefresh,
+            userId: userId,
+            displayName: displayName ?? '',
+            email: await _storage.read(key: 'email'),
+            avatarUrl: newAvatarUrl ?? await _storage.read(key: 'avatar_url'),
+            speciality: await _storage.read(key: 'speciality'),
+            institution: await _storage.read(key: 'institution'),
+          );
+        } else {
+          await _storage.deleteAll();
+        }
+      } catch (e) {
+        // ERROR DE RED: No borrar nada, permitir entrar offline
+        if (e is DioException && 
+            (e.type == DioExceptionType.connectionTimeout || 
+             e.type == DioExceptionType.receiveTimeout ||
+             e.type == DioExceptionType.connectionError ||
+             e.type == DioExceptionType.unknown)) {
+          state = UserModel(
+            accessToken: token,
+            refreshToken: refreshToken!,
             userId: userId,
             displayName: displayName ?? '',
             email: await _storage.read(key: 'email'),
@@ -59,16 +87,18 @@ class AuthNotifier extends StateNotifier<UserModel?> {
             institution: await _storage.read(key: 'institution'),
           );
         } else {
+          // Error de autenticación real: limpiar
           await _storage.deleteAll();
         }
-      } catch (_) {
-        // Refresh falló — limpiar y pedir login
-        await _storage.deleteAll();
       }
     }
     _initialized = true;
-    // Forzado: Notificar cambio de estado aunque sea null para que el router reaccione
     if (state == null) state = null; 
+  }
+
+  Future<void> loginGuest() async {
+    await _storage.write(key: 'is_guest', value: 'true');
+    state = UserModel(userId: 'guest', displayName: 'Invitado', isGuest: true);
   }
 
   Future<void> loginWithGoogle() async {
@@ -84,6 +114,7 @@ class AuthNotifier extends StateNotifier<UserModel?> {
     final res = await _dio.post('/auth/google', data: {'idToken': auth.idToken});
     final user = UserModel.fromJson(res.data);
     await _save(user);
+    await _storage.delete(key: 'is_guest');
     state = user;
   }
 
@@ -132,12 +163,59 @@ class AuthNotifier extends StateNotifier<UserModel?> {
   }
 }
 
+final guestObsCountProvider = FutureProvider<int>((ref) async {
+  final db = ref.watch(localDbProvider);
+  final obs = await db.getObservations('OFFLINE_GUEST');
+  return obs.length;
+});
+
 // ── PROJECTS ──────────────────────────────────────────────────────────────────
 
 final projectsProvider = FutureProvider<List<ProjectModel>>((ref) async {
-  final dio = ref.watch(dioProvider);
-  final res = await dio.get('/projects');
-  return (res.data as List).map((j) => ProjectModel.fromJson(j)).toList();
+  final user = ref.watch(authProvider);
+  final db = ref.watch(localDbProvider);
+
+  final guestProject = ProjectModel(
+    id: 'OFFLINE_GUEST',
+    name: 'Espacio Local',
+    description: 'Entrada rápida sin proyecto',
+    shareCode: 'OFFLINE',
+    isArchived: false,
+    memberCount: 1,
+  );
+
+  if (user?.isGuest == true) {
+    return [guestProject];
+  }
+
+  List<ProjectModel> realItems = [];
+  try {
+    final dio = ref.watch(dioProvider);
+    final res = await dio.get('/projects');
+    realItems = (res.data as List).map((j) => ProjectModel.fromJson(j)).toList();
+    
+    // Cachear proyectos en local
+    for (final p in realItems) {
+      await db.upsertProject(LocalProjectsCompanion(
+        id: Value(p.id),
+        name: Value(p.name),
+        description: Value(p.description),
+        shareCode: Value(p.shareCode),
+        isArchived: Value(p.isArchived),
+        memberCount: Value(p.memberCount),
+      ));
+    }
+  } catch (e) {
+    // Fallback a local si falla red
+    final local = await db.getLocalProjects();
+    realItems = local.map((p) => ProjectModel(
+      id: p.id, name: p.name, description: p.description,
+      shareCode: p.shareCode, isArchived: p.isArchived, memberCount: p.memberCount,
+    )).toList();
+  }
+
+  // Devolver el proyecto local primero, seguido de los reales
+  return [guestProject, ...realItems];
 });
 
 // ── OBSERVATIONS ──────────────────────────────────────────────────────────────
@@ -238,6 +316,7 @@ final commentsProvider = FutureProvider.family<List<CommentModel>, String>((ref,
 // ── ACTIVITY ──────────────────────────────────────────────────────────────────
 
 final activityProvider = FutureProvider.family<List<ActivityItemModel>, String>((ref, projectId) async {
+  if (projectId == 'OFFLINE_GUEST') return [];
   final dio = ref.watch(dioProvider);
   final res = await dio.get('/projects/$projectId/observations/activity');
   return (res.data as List).map((j) => ActivityItemModel.fromJson(j)).toList();
@@ -245,18 +324,84 @@ final activityProvider = FutureProvider.family<List<ActivityItemModel>, String>(
 
 // ── ROUTES ────────────────────────────────────────────────────────────────────
 
+// ── ROUTES ────────────────────────────────────────────────────────────────────
+
 final routesProvider = FutureProvider.family<List<RouteModel>, String>((ref, projectId) async {
-  final dio = ref.watch(dioProvider);
-  final res = await dio.get('/projects/$projectId/routes');
-  return (res.data as List).map((j) => RouteModel.fromJson(j)).toList();
+  final db = ref.watch(localDbProvider);
+  if (projectId == 'OFFLINE_GUEST') {
+    final local = await db.getRoutes(projectId);
+    return local.map((r) => RouteModel(
+      id: r.id, projectId: r.projectId, name: r.name,
+      startedAt: r.startedAt, endedAt: r.endedAt,
+      distanceMeters: r.distanceMeters, trackPointsJson: r.trackPointsJson,
+    )).toList();
+  }
+  try {
+    final dio = ref.watch(dioProvider);
+    final res = await dio.get('/projects/$projectId/routes');
+    final items = (res.data as List).map((j) => RouteModel.fromJson(j)).toList();
+    
+    for (final r in items) {
+      await db.upsertRoute(LocalRoutesCompanion(
+        id: Value(r.id),
+        projectId: Value(r.projectId),
+        name: Value(r.name),
+        startedAt: Value(r.startedAt),
+        endedAt: Value(r.endedAt),
+        distanceMeters: Value(r.distanceMeters),
+        trackPointsJson: Value(r.trackPointsJson),
+        syncStatus: const Value('synced'),
+      ));
+    }
+    return items;
+  } catch (e) {
+    final local = await db.getRoutes(projectId);
+    if (local.isEmpty) throw e;
+    return local.map((r) => RouteModel(
+      id: r.id, projectId: r.projectId, name: r.name,
+      startedAt: r.startedAt, endedAt: r.endedAt,
+      distanceMeters: r.distanceMeters, trackPointsJson: r.trackPointsJson,
+    )).toList();
+  }
 });
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
 
 final notesProvider = FutureProvider.family<List<NoteModel>, String>((ref, projectId) async {
-  final dio = ref.watch(dioProvider);
-  final res = await dio.get('/projects/$projectId/notes');
-  return (res.data as List).map((j) => NoteModel.fromJson(j)).toList();
+  final db = ref.watch(localDbProvider);
+  if (projectId == 'OFFLINE_GUEST') {
+    final local = await db.getNotes(projectId);
+    return local.map((n) => NoteModel(
+      id: n.id, projectId: n.projectId, title: n.title, body: n.body,
+      latitude: n.latitude, longitude: n.longitude, createdAt: n.createdAt,
+    )).toList();
+  }
+  try {
+    final dio = ref.watch(dioProvider);
+    final res = await dio.get('/projects/$projectId/notes');
+    final items = (res.data as List).map((j) => NoteModel.fromJson(j)).toList();
+
+    for (final n in items) {
+      await db.upsertNote(LocalNotesCompanion(
+        id: Value(n.id),
+        projectId: Value(n.projectId),
+        title: Value(n.title),
+        body: Value(n.body),
+        latitude: Value(n.latitude),
+        longitude: Value(n.longitude),
+        createdAt: Value(n.createdAt),
+        syncStatus: const Value('synced'),
+      ));
+    }
+    return items;
+  } catch (e) {
+    final local = await db.getNotes(projectId);
+    if (local.isEmpty) throw e;
+    return local.map((n) => NoteModel(
+      id: n.id, projectId: n.projectId, title: n.title, body: n.body,
+      latitude: n.latitude, longitude: n.longitude, createdAt: n.createdAt,
+    )).toList();
+  }
 });
 
 // ── MEMBERS ──────────────────────────────────────────────────────────────────
@@ -270,15 +415,31 @@ class ProjectDetail {
 }
 
 final projectDetailProvider = FutureProvider.family<ProjectDetail, String>((ref, projectId) async {
-  final dio = ref.watch(dioProvider);
-  final res = await dio.get('/projects/$projectId');
-  final j = res.data as Map<String, dynamic>;
-  return ProjectDetail(
-    shareCode: j['shareCode'],
-    ownerId: j['ownerId'].toString(),
-    projectName: j['name'],
-    members: (j['members'] as List).map((m) => MemberModel.fromJson(m)).toList(),
-  );
+  if (projectId == 'OFFLINE_GUEST') {
+    return ProjectDetail(shareCode: 'OFFLINE', ownerId: 'guest', projectName: 'Espacio Local', members: []);
+  }
+  final db = ref.watch(localDbProvider);
+  try {
+    final dio = ref.watch(dioProvider);
+    final res = await dio.get('/projects/$projectId');
+    final j = res.data as Map<String, dynamic>;
+    final detail = ProjectDetail(
+      shareCode: j['shareCode'],
+      ownerId: j['ownerId'].toString(),
+      projectName: j['name'],
+      members: (j['members'] as List).map((m) => MemberModel.fromJson(m)).toList(),
+    );
+    // Podríamos cachear esto también si fuera necesario, pero por ahora devolvemos
+    return detail;
+  } catch (e) {
+    // Si falla, intentamos devolver al menos el nombre del proyecto si lo tenemos en LocalProjects
+    final local = await db.getLocalProjects();
+    final p = local.where((x) => x.id == projectId).firstOrNull;
+    if (p != null) {
+      return ProjectDetail(shareCode: p.shareCode, ownerId: '', projectName: p.name, members: []);
+    }
+    throw e;
+  }
 });
 
 // ── INATURALIST ───────────────────────────────────────────────────────────────

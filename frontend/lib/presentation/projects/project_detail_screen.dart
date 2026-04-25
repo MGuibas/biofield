@@ -8,6 +8,7 @@ import '../../core/constants.dart';
 import '../../data/remote/providers.dart';
 import '../../data/remote/api_client.dart';
 import '../../data/recording/recording_provider.dart';
+import '../../data/sync/sync_service.dart' as sync;
 import '../../domain/models/models.dart';
 
 import '../widgets/bio_field_bottom_nav_bar.dart';
@@ -23,12 +24,9 @@ class ProjectDetailScreen extends ConsumerStatefulWidget {
 
 String _timeAgo(DateTime dt) {
   final localDt = dt.isUtc ? dt.toLocal() : dt;
-  final diff = DateTime.now().difference(localDt);
-  if (diff.inSeconds < 60) return 'hace un momento';
-  if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
-  if (diff.inHours < 24) return 'hace ${diff.inHours} h';
-  if (diff.inDays < 7) return 'hace ${diff.inDays} d';
-  return '${dt.day}/${dt.month}/${dt.year}';
+  final h = localDt.hour.toString().padLeft(2, '0');
+  final m = localDt.minute.toString().padLeft(2, '0');
+  return '${localDt.day}/${localDt.month}/${localDt.year} $h:$m';
 }
 
 class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> with SingleTickerProviderStateMixin {
@@ -119,10 +117,20 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> with 
           ));
           if (confirm != true) return;
           try {
-            await ref.read(dioProvider).delete('/observations/${o.id}');
+            if (widget.projectId != 'OFFLINE_GUEST') {
+              await ref.read(dioProvider).delete('/observations/${o.id}');
+            } else {
+              // Borrar de localdb
+              final db = ref.read(sync.localDbProvider);
+              await (db.delete(db.localObservations)..where((obs) => obs.id.equals(o.id))).go();
+            }
             ref.invalidate(observationsProvider(widget.projectId));
             ref.invalidate(observationsPageProvider((projectId: widget.projectId, page: 1)));
-          } catch (_) {}
+            ref.invalidate(guestObsCountProvider); // Por si acaso era de invitado
+          } catch (_) {
+            // Si falla red pero es real, al menos marcar para borrar o avisar
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: No hay conexión para eliminar del servidor')));
+          }
         },
       ),
     ])));
@@ -137,19 +145,39 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> with 
     final isRecordingHere = rec.active && rec.projectId == widget.projectId;
     final detail = ref.watch(projectDetailProvider(widget.projectId));
     final theme = Theme.of(context);
+    final isLocal = widget.projectId == 'OFFLINE_GUEST';
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       extendBody: true, // Important for floating nav bar
       appBar: AppBar(
+        flexibleSpace: isLocal ? Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade900, Colors.blue.shade700],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ) : null,
         title: detail.when(
-          data: (d) => Text(d.projectName),
+          data: (d) => Row(
+            children: [
+              if (isLocal) ...[
+                const Icon(Icons.phonelink_setup, size: 20),
+                const SizedBox(width: 8),
+              ],
+              Text(d.projectName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
           loading: () => const Text('Proyecto'),
           error: (_, __) => const Text('Error'),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.drive_file_rename_outline), onPressed: () => _renameProject(detail.valueOrNull?.projectName ?? '')),
-          IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: _deleteProject),
+          if (widget.projectId != 'OFFLINE_GUEST') ...[
+            IconButton(icon: const Icon(Icons.drive_file_rename_outline), onPressed: () => _renameProject(detail.valueOrNull?.projectName ?? '')),
+            IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: _deleteProject),
+          ],
         ],
       ),
       body: Column(
@@ -661,8 +689,7 @@ class _ActivityTab extends ConsumerWidget {
     final cleanUrl = url.startsWith('/') ? url : '/$url';
     final uri = Uri.parse(AppConstants.apiBaseUrl);
     final baseUrl = '${uri.scheme}://${uri.host}';
-    final timestamp = dt != null ? '?v=${dt.millisecondsSinceEpoch}' : '';
-    return '$baseUrl$cleanUrl$timestamp';
+    return '$baseUrl$cleanUrl';
   }
 
   String _observationPhotoUrl(String url, DateTime? dt) {
@@ -839,8 +866,7 @@ class _MembersTab extends ConsumerWidget {
     final cleanUrl = url.startsWith('/') ? url : '/$url';
     final uri = Uri.parse(AppConstants.apiBaseUrl);
     final baseUrl = '${uri.scheme}://${uri.host}';
-    final timestamp = dt != null ? '?v=${dt.millisecondsSinceEpoch}' : '';
-    return '$baseUrl$cleanUrl$timestamp';
+    return '$baseUrl$cleanUrl';
   }
 
   Color _roleColor(String role) => switch (role.toLowerCase()) {

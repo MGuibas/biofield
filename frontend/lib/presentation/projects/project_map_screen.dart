@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import '../../data/remote/providers.dart';
 import '../../domain/models/models.dart';
 
@@ -24,6 +25,10 @@ class _ProjectMapScreenState extends ConsumerState<ProjectMapScreen> {
   final _mapController = MapController();
   bool _isSatellite = false;
   ObservationModel? _selectedObs;
+  late final _tileProvider = FMTCTileProvider.allStores(
+    allStoresStrategy: BrowseStoreStrategy.readUpdateCreate,
+    loadingStrategy: BrowseLoadingStrategy.cacheFirst,
+  );
 
   Future<void> _goToMyLocation() async {
     try {
@@ -124,7 +129,8 @@ class _ProjectMapScreenState extends ConsumerState<ProjectMapScreen> {
               urlTemplate: _isSatellite 
                 ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
                 : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.biofield.frontend',
+              userAgentPackageName: 'es.guibas.biofield',
+              tileProvider: _tileProvider,
             ),
             if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
             if (markers.isNotEmpty)

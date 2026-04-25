@@ -5,6 +5,7 @@ import '../../data/remote/providers.dart';
 import '../../data/remote/api_client.dart';
 import '../widgets/recording_status_banner.dart';
 import '../../data/recording/recording_provider.dart';
+import '../../data/sync/sync_service.dart' as sync;
 
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
@@ -26,6 +27,24 @@ class ProjectsScreen extends ConsumerWidget {
               IconButton(
                 icon: Container(
                   padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.map_outlined, color: Colors.blue, size: 20),
+                ),
+                tooltip: 'Planificación Offline',
+                onPressed: () => context.go('/planning'),
+              ),
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.auto_awesome, color: Colors.green, size: 20),
+                ),
+                tooltip: 'Identificar especie',
+                onPressed: () => context.go('/identify'),
+              ),
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(color: theme.colorScheme.primaryContainer.withOpacity(0.5), shape: BoxShape.circle),
                   child: Icon(Icons.person_outline, color: theme.colorScheme.onPrimaryContainer, size: 20),
                 ),
@@ -42,91 +61,217 @@ class ProjectsScreen extends ConsumerWidget {
                 child: RecordingStatusBanner(rec: rec, onTap: () => context.go('/projects/${rec.projectId}/routes/record')),
               ),
             ),
+          // Banner de migración (si hay obs de invitado)
+          ref.watch(guestObsCountProvider).when(
+            data: (count) {
+              final user = ref.watch(authProvider);
+              if (count > 0 && user?.isGuest != true) {
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [Colors.orange.shade800, Colors.orange.shade600]),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.cloud_upload_outlined, color: Colors.white, size: 28),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Migración pendiente', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                Text('Tienes $count observaciones sin asignar. Toca un proyecto para migrarlas allí.', 
+                                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return const SliverToBoxAdapter(child: SizedBox.shrink());
+            },
+            loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+          ),
+          projects.when(
+            loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+            data: (list) {
+              final local = list.firstWhere((p) => p.id == 'OFFLINE_GUEST');
+              final user = ref.read(authProvider);
+              if (user?.isGuest == true) return const SliverToBoxAdapter(child: SizedBox.shrink());
+              
+              return SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                sliver: SliverToBoxAdapter(
+                  child: InkWell(
+                    onTap: () => context.go('/projects/${local.id}'),
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade900.withOpacity(0.8), Colors.blue.shade800.withOpacity(0.4)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.2), shape: BoxShape.circle),
+                            child: const Icon(Icons.phonelink_setup, color: Colors.blue, size: 28),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Espacio Local', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                Text('Datos guardados en este dispositivo', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: Colors.white54),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             sliver: SliverToBoxAdapter(
-              child: Text('MIS PROYECTOS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: theme.colorScheme.primary.withOpacity(0.5), letterSpacing: 1.2)),
+              child: Text('MIS PROYECTOS EN LA NUBE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: theme.colorScheme.primary.withOpacity(0.5), letterSpacing: 1.2)),
             ),
           ),
           projects.when(
             loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
             error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
-            data: (list) => list.isEmpty
-                ? const SliverFillRemaining(
-                    child: _EmptyState(
-                      icon: Icons.folder_open_outlined,
-                      title: 'No tienes proyectos aún',
-                      subtitle: 'Crea tu primer proyecto para empezar a recolectar datos.',
-                    ),
-                  )
-                : SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (_, i) {
-                          final p = list[i];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 8))],
-                              border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(24),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 0, top: 0, bottom: 0,
-                                    child: Container(width: 6, color: p.isArchived ? Colors.grey : theme.colorScheme.primary),
+            data: (list) {
+              final user = ref.read(authProvider);
+              final filtered = user?.isGuest == true ? list : list.where((p) => p.id != 'OFFLINE_GUEST').toList();
+              
+              if (filtered.isEmpty) {
+                return const SliverFillRemaining(
+                  child: _EmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: 'Sin proyectos en la nube',
+                    subtitle: 'Crea uno nuevo para colaborar con otros miembros.',
+                  ),
+                );
+              }
+              
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.85,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) {
+                      final p = filtered[i];
+                      final isDark = theme.brightness == Brightness.dark;
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? theme.colorScheme.surface : Colors.white,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            if (!isDark) BoxShadow(color: theme.colorScheme.primary.withOpacity(0.06), blurRadius: 24, offset: const Offset(0, 10))
+                          ],
+                          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(28),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(28),
+                            onTap: () async {
+                              final guestCount = ref.read(guestObsCountProvider).asData?.value ?? 0;
+                              final user = ref.read(authProvider);
+
+                              if (guestCount > 0 && user?.isGuest != true && p.id != 'OFFLINE_GUEST') {
+                                final migrate = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('¿Migrar datos locales?'),
+                                    content: Text('Tienes $guestCount observaciones sin proyecto. ¿Quieres moverlas a "${p.name}"?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ahora no')),
+                                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Migrar')),
+                                    ],
                                   ),
-                                  InkWell(
-                                    onTap: () => context.go('/projects/${p.id}'),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
-                                            child: Icon(Icons.folder_rounded, color: theme.colorScheme.primary, size: 24),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(p.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-                                                const SizedBox(height: 6),
-                                                Row(
-                                                  children: [
-                                                    Icon(Icons.group_outlined, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.5)),
-                                                    const SizedBox(width: 4),
-                                                    Text('${p.memberCount} miembros', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.5))),
-                                                    const SizedBox(width: 12),
-                                                    Icon(Icons.vpn_key_outlined, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.5)),
-                                                    const SizedBox(width: 4),
-                                                    Text(p.shareCode, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.primary.withOpacity(0.7))),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Icon(Icons.chevron_right_rounded, color: theme.colorScheme.outline),
-                                        ],
-                                      ),
+                                );
+
+                                if (migrate == true) {
+                                  await ref.read(sync.syncServiceProvider).migrateGuestObservations(p.id);
+                                  ref.invalidate(observationsProvider(p.id));
+                                  ref.invalidate(guestObsCountProvider);
+                                }
+                              }
+                              if (context.mounted) context.go('/projects/${p.id}');
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: (isDark ? Colors.white : theme.colorScheme.primary).withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Icon(Icons.folder_rounded, color: isDark ? Colors.white70 : theme.colorScheme.primary, size: 24),
+                                  ),
+                                  const Spacer(),
+                                  Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 6),
+                                  Text(p.description ?? '', style: TextStyle(fontSize: 12, color: (isDark ? Colors.white : Colors.black).withOpacity(0.5)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: (isDark ? Colors.white : theme.colorScheme.primary).withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.group_outlined, size: 12, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                                        const SizedBox(width: 4),
+                                        Text('${p.memberCount}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        },
-                        childCount: list.length,
-                      ),
-                    ),
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: filtered.length,
                   ),
+                ),
+              );
+            },
           ),
         ],
       ),

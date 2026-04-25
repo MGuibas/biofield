@@ -49,7 +49,7 @@ public record CreateCommentRequest(string Body);
 public record CommentResponse(Guid Id, Guid ObservationId, Guid UserId, string DisplayName, string? AvatarUrl, string Body, DateTime CreatedAt);
 
 // Actividad
-public record ActivityItem(string Type, string ActorName, string? AvatarUrl, string Description, DateTime OccurredAt);
+public record ActivityItem(string Type, Guid? ItemId, string ActorName, string? AvatarUrl, string Description, DateTime OccurredAt, string? PhotoUrl = null);
 
 // Estadísticas
 public record TaxonStat(string TaxonName, int Count);

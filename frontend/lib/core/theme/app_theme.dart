@@ -52,18 +52,30 @@ class AppTheme {
     );
   }
 
+  static const darkBackgroundColor = Color(0xFF121412);
+  static const darkSurfaceColor = Color(0xFF1A1D1A);
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
+      scaffoldBackgroundColor: darkBackgroundColor,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: Brightness.dark,
-        primary: primaryColor,
+        primary: const Color(0xFF4CAF50), // Brighter green for dark mode
+        surface: darkSurfaceColor,
+        onSurface: Colors.white70,
+        outlineVariant: Colors.white24,
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
         displayLarge: GoogleFonts.manrope(fontWeight: FontWeight.w800),
         headlineLarge: GoogleFonts.manrope(fontWeight: FontWeight.bold),
         titleLarge: GoogleFonts.manrope(fontWeight: FontWeight.bold),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        color: darkSurfaceColor,
       ),
     );
   }

@@ -1,24 +1,26 @@
 import 'dart:convert';
 
 class UserModel {
-  final String accessToken;
-  final String refreshToken;
+  final String? accessToken;
+  final String? refreshToken;
   final String userId;
   final String displayName;
   final String? email;
   final String? avatarUrl;
   final String? speciality;
   final String? institution;
+  final bool isGuest;
 
   UserModel({
-    required this.accessToken,
-    required this.refreshToken,
+    this.accessToken,
+    this.refreshToken,
     required this.userId,
     required this.displayName,
     this.email,
     this.avatarUrl,
     this.speciality,
     this.institution,
+    this.isGuest = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
@@ -41,6 +43,7 @@ class UserModel {
         avatarUrl: avatarUrl ?? this.avatarUrl,
         speciality: speciality ?? this.speciality,
         institution: institution ?? this.institution,
+        isGuest: isGuest,
       );
 }
 

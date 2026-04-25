@@ -226,34 +226,34 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
             .Where(o => o.ProjectId == projectId)
             .Include(o => o.Project)
             .Join(db.Users, o => o.UserId, u => u.Id, (o, u) => new ActivityItem(
-                "observation", u.DisplayName, u.AvatarUrl,
+                "observation", o.Id, u.DisplayName, u.AvatarUrl,
                 $"añadió {o.TaxonName}{(o.Title != null ? $" ({o.Title})" : "")}",
-                o.CreatedAt))
+                o.CreatedAt, null))
             .ToListAsync();
 
         var noteActivity = await db.Notes
             .Where(n => n.ProjectId == projectId)
             .Join(db.Users, n => n.UserId, u => u.Id, (n, u) => new ActivityItem(
-                "note", u.DisplayName, u.AvatarUrl,
+                "note", n.Id, u.DisplayName, u.AvatarUrl,
                 $"creó la nota \"{n.Title}\"",
-                n.CreatedAt))
+                n.CreatedAt, null))
             .ToListAsync();
 
         var routeActivity = await db.Routes
             .Where(r => r.ProjectId == projectId)
             .Join(db.Users, r => r.UserId, u => u.Id, (r, u) => new ActivityItem(
-                "route", u.DisplayName, u.AvatarUrl,
+                "route", r.Id, u.DisplayName, u.AvatarUrl,
                 $"grabó la ruta \"{r.Name}\"",
-                r.StartedAt))
+                r.StartedAt, null))
             .ToListAsync();
 
         var commentActivity = await db.Comments
             .Include(c => c.Observation)
             .Where(c => c.Observation.ProjectId == projectId)
             .Join(db.Users, c => c.UserId, u => u.Id, (c, u) => new ActivityItem(
-                "comment", u.DisplayName, u.AvatarUrl,
+                "comment", c.ObservationId, u.DisplayName, u.AvatarUrl,
                 $"comentó en {c.Observation.TaxonName}",
-                c.CreatedAt))
+                c.CreatedAt, null))
             .ToListAsync();
 
         return obsActivity.Concat(noteActivity).Concat(routeActivity).Concat(commentActivity)

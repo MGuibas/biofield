@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../data/remote/providers.dart';
 import '../../data/remote/api_client.dart';
 import '../../data/sync/sync_service.dart';
@@ -22,6 +23,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _institution = TextEditingController();
   bool _editing = false;
   bool _saving  = false;
+  File? _localAvatar; // preview local inmediato
+  int _avatarVersion = 0; // forzar rebuild del widget
 
   @override
   void initState() {
@@ -37,14 +40,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _pickAvatar() async {
     final xfile = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70, maxWidth: 400);
     if (xfile == null) return;
-    final bytes = await File(xfile.path).readAsBytes();
+    final file = File(xfile.path);
+    // Mostrar preview local inmediatamente
+    setState(() { _localAvatar = file; _avatarVersion++; });
+    
+    final bytes = await file.readAsBytes();
     final base64 = base64Encode(bytes);
     final ext = '.${xfile.path.split('.').last}';
     try {
       await ref.read(authProvider.notifier).uploadAvatar(base64, ext, ProviderScope.containerOf(context));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Avatar actualizado')));
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al subir avatar')));
+      imageCache.clear();
+      imageCache.clearLiveImages();
+      if (mounted) {
+        setState(() => _avatarVersion++);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Avatar actualizado')));
+      }
+    } catch (e) {
+      setState(() => _localAvatar = null);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al subir avatar: $e')));
     }
   }
 
@@ -61,6 +74,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al guardar')));
     }
     setState(() => _saving = false);
+  }
+
+  String _buildAvatarUrl(String baseUrl, String avatarUrl) {
+    String url = avatarUrl.startsWith('http') 
+      ? avatarUrl 
+      : '$baseUrl${avatarUrl.startsWith('/') ? avatarUrl : '/$avatarUrl'}';
+      
+    if (_avatarVersion > 0) {
+      url += url.contains('?') ? '&v=$_avatarVersion' : '?v=$_avatarVersion';
+    }
+    return url;
   }
 
   @override
@@ -97,12 +121,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Stack(
               children: [
                 CircleAvatar(
+                  key: ValueKey('avatar_$_avatarVersion'),
                   radius: 52,
                   backgroundColor: Colors.green.shade100,
-                  backgroundImage: user?.avatarUrl != null
-                      ? NetworkImage('$baseUrl${user!.avatarUrl}?v=${DateTime.now().minute}')
-                      : null,
-                  child: user?.avatarUrl == null
+                  backgroundImage: _localAvatar != null
+                      ? FileImage(_localAvatar!) as ImageProvider?
+                      : (user?.avatarUrl != null
+                          ? CachedNetworkImageProvider(_buildAvatarUrl(baseUrl, user!.avatarUrl!)) as ImageProvider?
+                          : null),
+                  child: (_localAvatar == null && user?.avatarUrl == null)
                       ? Text(
                           user?.displayName.isNotEmpty == true ? user!.displayName[0].toUpperCase() : '?',
                           style: const TextStyle(fontSize: 36, color: Color(0xFF2E7D32)),

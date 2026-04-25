@@ -47,7 +47,7 @@
 
         <!-- Foreground service para grabación GPS en background -->
         <service
-            android:name="com.lyokone.location.FlutterLocationService"
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
             android:foregroundServiceType="location"
             android:exported="false"/>
 

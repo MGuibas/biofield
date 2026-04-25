@@ -9,6 +9,8 @@ import '../../data/remote/providers.dart';
 import '../../data/remote/api_client.dart';
 import '../../data/sync/sync_service.dart';
 import '../../domain/models/models.dart';
+import '../../core/services/weather_service.dart';
+
 
 class ObservationFormScreen extends ConsumerStatefulWidget {
   final String projectId;
@@ -44,6 +46,7 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
   bool _locating = false;
   DateTime _observedAt = DateTime.now();
 
+
   final _weatherOptions = ['Soleado', 'Nublado', 'Lluvia', 'Niebla', 'Viento', 'Nieve'];
 
   @override
@@ -76,6 +79,23 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
       await Geolocator.requestPermission();
       final pos = await Geolocator.getCurrentPosition();
       if (mounted) setState(() => _position = pos);
+      
+      // Auto-completar clima si es una nueva observación y los campos están vacíos
+      if (widget.existing == null) {
+        final weather = await WeatherService.getCurrentWeather(pos.latitude, pos.longitude);
+        if (weather != null && mounted) {
+          setState(() {
+            if (_temp.text.isEmpty) _temp.text = weather['temperature'].toString();
+            if (_humidity.text.isEmpty) _humidity.text = weather['humidity'].toString();
+            _weather ??= weather['condition'];
+          });
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('🌤️ Clima detectado automáticamente'), 
+            duration: Duration(seconds: 2),
+            backgroundColor: Color(0xFF2E7D32),
+          ));
+        }
+      }
     } catch (_) {}
     if (mounted) setState(() => _locating = false);
   }
@@ -111,6 +131,7 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
     final xfile = await picker.pickImage(source: source, imageQuality: 80);
     if (xfile != null) setState(() => _newPhotos.add(File(xfile.path)));
   }
+
 
   Future<void> _pickDate() async {
     final d = await showDatePicker(
@@ -148,6 +169,10 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
     };
 
     try {
+      if (widget.projectId == 'OFFLINE_GUEST') {
+        throw Exception('Offline Guest Mode'); // Forzar flujo offline
+      }
+
       if (widget.existing == null) {
         final res = await ref.read(dioProvider).post('/projects/${widget.projectId}/observations', data: data);
         final obsId = res.data['id'];
@@ -196,6 +221,12 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
         observedAt: _observedAt,
         notes:      _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         quantity:   _quantity,
+        title:      _title.text.trim().isEmpty ? null : _title.text.trim(),
+        description: _description.text.trim().isEmpty ? null : _description.text.trim(),
+        weatherCondition: _weather,
+        temperature: _temp.text.isEmpty ? null : double.tryParse(_temp.text),
+        humidity: _humidity.text.isEmpty ? null : double.tryParse(_humidity.text),
+        habitatDescription: _habitatDesc.text.trim().isEmpty ? null : _habitatDesc.text.trim(),
       );
       if (widget.existing != null) {
         ref.invalidate(observationDetailProvider(widget.existing!.id));
@@ -203,7 +234,10 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
       }
       ref.invalidate(observationsProvider(widget.projectId));
       ref.invalidate(observationsPageProvider((projectId: widget.projectId, page: 1)));
-      if (mounted) context.pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('💾 Guardado localmente (Offline)')));
+        context.pop();
+      }
     }
   }
 
@@ -212,8 +246,19 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
     final searchResults = ref.watch(taxonSearchProvider(_taxonSearch.text));
     final isEdit = widget.existing != null;
 
+    final isLocal = widget.projectId == 'OFFLINE_GUEST';
+
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: isLocal ? Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade900, Colors.blue.shade700],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ) : null,
         title: Text(isEdit ? 'Editar observación' : 'Nueva observación'),
         actions: [
           IconButton(
@@ -239,7 +284,7 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
                 onPressed: () => setState(() { _selectedTaxonName = null; _selectedTaxonId = null; }),
               ),
             )
-          else ...[
+            else ...[
             TextField(
               controller: _taxonSearch,
               decoration: const InputDecoration(labelText: 'Buscar especie (iNaturalist)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.search)),
@@ -262,6 +307,7 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
                 ),
               ),
           ],
+
           const SizedBox(height: 12),
 
           // ── TÍTULO ───────────────────────────────────────────────────
@@ -427,6 +473,9 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
     final t = value.trim();
     if (t.isNotEmpty && !_tags.contains(t)) setState(() { _tags.add(t); _tagInput.clear(); });
   }
+
+
+
 
   Widget _sectionTitle(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
