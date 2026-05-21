@@ -45,8 +45,12 @@ builder.Services.AddHttpClient<IiNaturalistService, iNaturalistService>(client =
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 builder.Services.AddControllers();
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                     ?? new[] { "http://localhost:5173", "http://localhost:4173", "http://localhost:3000" };
+
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
-    p.WithOrigins("http://localhost:5173", "http://localhost:4173")
+    p.WithOrigins(allowedOrigins)
      .AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();

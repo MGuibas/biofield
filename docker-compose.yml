@@ -37,6 +37,10 @@ services:
       - Minio__AccessKey=minioadmin
       - Minio__SecretKey=minioadmin
       - Minio__Bucket=biofield
+      - Cors__AllowedOrigins__0=http://localhost:5173
+      - Cors__AllowedOrigins__1=http://localhost:4173
+      - Cors__AllowedOrigins__2=http://localhost:3000
+      - Cors__AllowedOrigins__3=https://biofield.guibas.es
     depends_on:
       - postgres
       - minio
