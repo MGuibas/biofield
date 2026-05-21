@@ -290,22 +290,49 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
               decoration: const InputDecoration(labelText: 'Buscar especie (iNaturalist)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.search)),
               onChanged: (_) => setState(() {}),
             ),
-            if (_taxonSearch.text.length >= 2)
+            if (_taxonSearch.text.length >= 2) ...[
               searchResults.when(
-                loading: () => const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+                loading: () => const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: LinearProgressIndicator()),
                 error: (_, __) => const SizedBox(),
                 data: (taxa) => Column(
-                  children: taxa.map((t) => ListTile(
-                    dense: true,
-                    leading: t.photoUrl != null
-                        ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.network(t.photoUrl!, width: 40, height: 40, fit: BoxFit.cover))
-                        : const Icon(Icons.eco),
-                    title: Text(t.name, style: const TextStyle(fontStyle: FontStyle.italic)),
-                    subtitle: t.commonName != null ? Text(t.commonName!) : null,
-                    onTap: () => setState(() { _selectedTaxonName = t.name; _selectedTaxonId = t.id; _taxonSearch.clear(); }),
-                  )).toList(),
+                  children: taxa
+                      .map((t) => ListTile(
+                            dense: true,
+                            leading: t.photoUrl != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(t.photoUrl!,
+                                        width: 40, height: 40, fit: BoxFit.cover))
+                                : const Icon(Icons.eco),
+                            title: Text(t.name,
+                                style: const TextStyle(
+                                    fontStyle: FontStyle.italic)),
+                            subtitle:
+                                t.commonName != null ? Text(t.commonName!) : null,
+                            onTap: () => setState(() {
+                              _selectedTaxonName = t.name;
+                              _selectedTaxonId = t.id;
+                              _taxonSearch.clear();
+                            }),
+                          ))
+                      .toList(),
                 ),
               ),
+              // Opción para usar el texto ingresado manualmente
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.add_circle_outline, color: Colors.blue),
+                title: Text('Usar "${_taxonSearch.text}"'),
+                subtitle: const Text('Entrada manual (sin ID de iNaturalist)'),
+                onTap: () => setState(() {
+                  _selectedTaxonName = _taxonSearch.text.trim();
+                  _selectedTaxonId = null;
+                  _taxonSearch.clear();
+                }),
+              ),
+            ],
           ],
 
           const SizedBox(height: 12),

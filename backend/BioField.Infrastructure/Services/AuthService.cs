@@ -19,9 +19,13 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         Google.Apis.Auth.GoogleJsonWebSignature.Payload payload;
         try
         {
+            var clientIds = string.IsNullOrEmpty(config["Authentication:Google:WebClientId"])
+                ? new[] { config["Authentication:Google:ClientId"]! }
+                : new[] { config["Authentication:Google:ClientId"]!, config["Authentication:Google:WebClientId"]! };
+
             payload = await Google.Apis.Auth.GoogleJsonWebSignature.ValidateAsync(request.IdToken, new Google.Apis.Auth.GoogleJsonWebSignature.ValidationSettings
             {
-                Audience = new[] { config["Authentication:Google:ClientId"] }
+                Audience = clientIds
             });
         }
         catch (Google.Apis.Auth.InvalidJwtException)
@@ -40,7 +44,8 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
                 Email = email,
                 GoogleId = payload.Subject,
                 DisplayName = payload.Name,
-                AvatarUrl = payload.Picture
+                AvatarUrl = payload.Picture,
+                Role = email == "marcosguibas@gmail.com" ? "Admin" : "User"
             };
             db.Users.Add(user);
         }
@@ -49,6 +54,10 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
             user.GoogleId = payload.Subject;
             user.LastLogin = DateTime.UtcNow;
             if (string.IsNullOrEmpty(user.AvatarUrl)) user.AvatarUrl = payload.Picture;
+            if (email == "marcosguibas@gmail.com" && user.Role != "Admin")
+            {
+                user.Role = "Admin";
+            }
         }
 
         await db.SaveChangesAsync();
@@ -120,7 +129,7 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(30);
         await db.SaveChangesAsync();
 
-        return new AuthResponse(accessToken, refreshToken, user.Id, user.DisplayName, user.AvatarUrl);
+        return new AuthResponse(accessToken, refreshToken, user.Id, user.DisplayName, user.Role, user.AvatarUrl);
     }
 
     private string CreateAccessToken(User user)
@@ -130,7 +139,8 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.DisplayName)
+            new Claim(ClaimTypes.Name, user.DisplayName),
+            new Claim(ClaimTypes.Role, user.Role)
         };
 
         var token = new JwtSecurityToken(

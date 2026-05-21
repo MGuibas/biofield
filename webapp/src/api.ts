@@ -1,12 +1,29 @@
 import axios from 'axios'
 
-export const API_BASE = 'http://localhost:5000/api'
+const isLocal = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || 
+   window.location.hostname === '127.0.0.1' || 
+   window.location.hostname.startsWith('192.168.'));
 
-// Las fotos son URLs públicas de MinIO
+export const API_BASE = isLocal 
+  ? `http://${window.location.hostname}:5000/api` 
+  : 'https://api.guibas.es/api';
+
 export function photoUrl(key: string | null | undefined): string | null {
-  if (!key) return null
-  if (key.startsWith('http')) return key
-  return `http://localhost:9000/biofield/${key}`
+  if (!key) return null;
+  if (key.startsWith('http')) return key;
+  
+  if (isLocal) {
+    return `http://${window.location.hostname}:9000/biofield/${key}`;
+  }
+  return `https://fotos.guibas.es/biofield/${key}`;
+}
+
+export function getAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const cleanApiBase = API_BASE.replace('/api', '');
+  return `${cleanApiBase}${url}`;
 }
 
 const api = axios.create({ baseURL: API_BASE })

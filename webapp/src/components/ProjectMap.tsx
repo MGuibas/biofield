@@ -15,14 +15,19 @@ interface Props {
   routes: Route[]
   height?: number
   onObsClick?: (obs: Observation) => void
+  editMode?: boolean
+  onObservationMove?: (id: string, lat: number, lng: number) => void
 }
 
-export default function ProjectMap({ observations, routes, height = 400, onObsClick }: Props) {
+export default function ProjectMap({ observations, routes, height = 400, onObsClick, editMode = false, onObservationMove }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const obsMapRef = useRef<Map<string, Observation>>(new Map())
   const onObsClickRef = useRef(onObsClick)
   onObsClickRef.current = onObsClick
+  const onObservationMoveRef = useRef(onObservationMove)
+  onObservationMoveRef.current = onObservationMove
+  const hasFittedRef = useRef(false)
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return
@@ -62,28 +67,157 @@ export default function ProjectMap({ observations, routes, height = 400, onObsCl
         <b style="font-size:13px">${obs.taxonName}</b>
         ${obs.title ? `<br><span style="font-size:12px">${obs.title}</span>` : ''}
         <br><small style="color:#666">${new Date(obs.observedAt).toLocaleDateString()}</small>
-        <br><button data-obs-id="${obs.id}" style="margin-top:6px;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Ver detalle →</button>
+        ${editMode ? `<br><small style="color:#2e7d32;font-weight:bold">📍 Arrastra para mover</small>` : `<br><button data-obs-id="${obs.id}" style="margin-top:6px;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Ver detalle →</button>`}
       `
-      L.circleMarker(ll, { radius: 7, color: '#2e7d32', fillColor: '#4caf50', fillOpacity: 0.9, weight: 2 })
-        .bindPopup(L.popup({ minWidth: 180 }).setContent(div))
-        .addTo(map)
+
+      if (editMode) {
+        const marker = L.marker(ll, {
+          draggable: true,
+          icon: L.divIcon({
+            className: 'custom-draggable-marker',
+            html: `<div style="
+              width: 24px;
+              height: 24px;
+              background: var(--green);
+              border: 2px solid white;
+              border-radius: 50%;
+              box-shadow: 0 0 0 2px var(--green), 0 2px 8px rgba(0,0,0,0.3);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              cursor: move;
+            ">📍</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          })
+        })
+          .bindPopup(L.popup({ minWidth: 180 }).setContent(div))
+          .addTo(map)
+
+        marker.on('dragend', (event) => {
+          const newLatLng = (event.target as L.Marker).getLatLng()
+          onObservationMoveRef.current?.(obs.id, newLatLng.lat, newLatLng.lng)
+        })
+      } else {
+        L.circleMarker(ll, { radius: 7, color: '#2e7d32', fillColor: '#4caf50', fillOpacity: 0.9, weight: 2 })
+          .bindPopup(L.popup({ minWidth: 180 }).setContent(div))
+          .addTo(map)
+      }
     })
 
     routes.forEach(route => {
       if (!route.trackPointsJson) return
       try {
-        const pts: [number, number][] = JSON.parse(route.trackPointsJson)
-        if (!pts.length) return
-        const lls = pts.map(([lat, lng]) => L.latLng(lat, lng))
+        const rawPts = JSON.parse(route.trackPointsJson)
+        if (!Array.isArray(rawPts) || !rawPts.length) return
+        
+        const lls = rawPts.map(pt => {
+          if (Array.isArray(pt)) {
+            return L.latLng(pt[0], pt[1])
+          } else if (pt && typeof pt === 'object') {
+            const lat = pt.lat !== undefined ? pt.lat : pt.latitude
+            const lon = pt.lon !== undefined ? pt.lon : (pt.lng !== undefined ? pt.lng : pt.longitude)
+            if (lat !== undefined && lon !== undefined) {
+              return L.latLng(lat, lon)
+            }
+          }
+          return null
+        }).filter((ll): ll is L.LatLng => ll !== null)
+
+        if (!lls.length) return
         lls.forEach(ll => bounds.push(ll))
-        L.polyline(lls, { color: '#1565c0', weight: 3 })
-          .bindPopup(`<b>${route.name}</b><br>${(route.distanceMeters / 1000).toFixed(2)} km`)
+
+        // Draw neon glow outer line
+        const glowLine = L.polyline(lls, {
+          color: '#6366f1', // Indigo glow
+          weight: 8,
+          opacity: 0.35,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map)
+
+        // Draw main route core line
+        const mainLine = L.polyline(lls, {
+          color: '#3b82f6', // Premium bright blue
+          weight: 4,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        })
+          .bindPopup(`<b>📍 Ruta: ${route.name}</b><br>📏 ${(route.distanceMeters / 1000).toFixed(2)} km`)
           .addTo(map)
+
+        // Hover effects - changes core and glow colors dynamically
+        mainLine.on('mouseover', () => {
+          mainLine.setStyle({ color: '#f43f5e', weight: 5 }) // Rose core
+          glowLine.setStyle({ color: '#ec4899', weight: 11, opacity: 0.6 }) // Pink glow
+        })
+        mainLine.on('mouseout', () => {
+          mainLine.setStyle({ color: '#3b82f6', weight: 4 }) // Restores blue core
+          glowLine.setStyle({ color: '#6366f1', weight: 8, opacity: 0.35 }) // Restores indigo glow
+        })
+
+        // Draw Start and End Markers (premium badges)
+        if (lls.length > 0) {
+          L.marker(lls[0], {
+            icon: L.divIcon({
+              className: 'route-start-marker',
+              html: `<div style="
+                background: #10b981;
+                color: white;
+                padding: 3px 7px;
+                border-radius: 8px;
+                font-size: 9px;
+                font-weight: 800;
+                border: 1.5px solid white;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+                text-align: center;
+                line-height: 1;
+                font-family: system-ui, -apple-system, sans-serif;
+                letter-spacing: 0.5px;
+              ">INICIO</div>`,
+              iconSize: [46, 18],
+              iconAnchor: [23, 9]
+            })
+          })
+            .bindPopup(`<b>Inicio de ruta: ${route.name}</b>`)
+            .addTo(map)
+
+          if (lls.length > 1) {
+            L.marker(lls[lls.length - 1], {
+              icon: L.divIcon({
+                className: 'route-end-marker',
+                html: `<div style="
+                  background: #ef4444;
+                  color: white;
+                  padding: 3px 7px;
+                  border-radius: 8px;
+                  font-size: 9px;
+                  font-weight: 800;
+                  border: 1.5px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+                  text-align: center;
+                  line-height: 1;
+                  font-family: system-ui, -apple-system, sans-serif;
+                  letter-spacing: 0.5px;
+                ">FIN</div>`,
+                iconSize: [36, 18],
+                iconAnchor: [18, 9]
+              })
+            })
+              .bindPopup(`<b>Fin de ruta: ${route.name}</b>`)
+              .addTo(map)
+          }
+        }
       } catch { /* invalid json */ }
     })
 
-    if (bounds.length) map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] })
-  }, [observations, routes])
+    if (bounds.length && !hasFittedRef.current) {
+      map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] })
+      hasFittedRef.current = true
+    }
+  }, [observations, routes, editMode])
 
   return <div ref={ref} style={{ height, borderRadius: 8, overflow: 'hidden' }} />
 }

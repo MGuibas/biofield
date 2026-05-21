@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 class BioFieldBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final bool isLocal;
 
   const BioFieldBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.isLocal = false,
   });
 
   @override
@@ -53,26 +55,28 @@ class BioFieldBottomNavBar extends StatelessWidget {
                   isActive: currentIndex == 1,
                   onTap: () => onTap(1),
                 ),
-                _NavBarItem(
-                  icon: Icons.hub_outlined,
-                  activeIcon: Icons.hub,
-                  label: 'Actividad',
-                  isActive: currentIndex == 2,
-                  onTap: () => onTap(2),
-                ),
-                _NavBarItem(
-                  icon: Icons.group_outlined,
-                  activeIcon: Icons.group,
-                  label: 'Miembros',
-                  isActive: currentIndex == 3,
-                  onTap: () => onTap(3),
-                ),
+                if (!isLocal) ...[
+                  _NavBarItem(
+                    icon: Icons.hub_outlined,
+                    activeIcon: Icons.hub,
+                    label: 'Actividad',
+                    isActive: currentIndex == 2,
+                    onTap: () => onTap(2),
+                  ),
+                  _NavBarItem(
+                    icon: Icons.group_outlined,
+                    activeIcon: Icons.group,
+                    label: 'Miembros',
+                    isActive: currentIndex == 3,
+                    onTap: () => onTap(3),
+                  ),
+                ],
                 _NavBarItem(
                   icon: Icons.note_outlined,
                   activeIcon: Icons.note,
                   label: 'Notas',
-                  isActive: currentIndex == 4,
-                  onTap: () => onTap(4),
+                  isActive: currentIndex == (isLocal ? 2 : 4),
+                  onTap: () => onTap(isLocal ? 2 : 4),
                 ),
               ],
             ),

@@ -66,17 +66,23 @@ public class ExportService(AppDbContext db, IStorageService storage) : IExportSe
     public async Task<byte[]> ExportGeoJsonAsync(Guid projectId, Guid userId)
     {
         await EnsureMemberAsync(projectId, userId);
+        
         var observations = await db.Observations
             .Where(o => o.ProjectId == projectId)
             .ToListAsync();
 
-        var features = observations.Select(o => new
+        var routes = await db.Routes
+            .Where(r => r.ProjectId == projectId)
+            .ToListAsync();
+
+        var obsFeatures = observations.Select(o => new
         {
             type = "Feature",
             geometry = new { type = "Point", coordinates = new[] { o.Longitude, o.Latitude } },
             properties = new
             {
                 id = o.Id,
+                type = "observation",
                 taxonName = o.TaxonName,
                 taxonId = o.TaxonId,
                 title = o.Title,
@@ -89,7 +95,67 @@ public class ExportService(AppDbContext db, IStorageService storage) : IExportSe
             }
         });
 
-        var geojson = new { type = "FeatureCollection", features };
+        var routeFeatures = routes.Select(r =>
+        {
+            var coords = new List<double[]>();
+            if (!string.IsNullOrEmpty(r.TrackPointsJson))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(r.TrackPointsJson);
+                    foreach (var pt in doc.RootElement.EnumerateArray())
+                    {
+                        double lat = 0, lon = 0;
+                        bool hasCoords = false;
+                        if (pt.ValueKind == JsonValueKind.Array && pt.GetArrayLength() >= 2)
+                        {
+                            lat = pt[0].GetDouble();
+                            lon = pt[1].GetDouble();
+                            hasCoords = true;
+                        }
+                        else if (pt.ValueKind == JsonValueKind.Object)
+                        {
+                            if (pt.TryGetProperty("lat", out var latEl) && pt.TryGetProperty("lon", out var lonEl))
+                            {
+                                lat = latEl.GetDouble();
+                                lon = lonEl.GetDouble();
+                                hasCoords = true;
+                            }
+                            else if (pt.TryGetProperty("latitude", out var latEl2) && pt.TryGetProperty("longitude", out var lonEl2))
+                            {
+                                lat = latEl2.GetDouble();
+                                lon = lonEl2.GetDouble();
+                                hasCoords = true;
+                            }
+                        }
+                        if (hasCoords)
+                        {
+                            coords.Add(new[] { lon, lat });
+                        }
+                    }
+                }
+                catch { /* ignore invalid json */ }
+            }
+
+            return new
+            {
+                type = "Feature",
+                geometry = new { type = "LineString", coordinates = coords.ToArray() },
+                properties = new
+                {
+                    id = r.Id,
+                    type = "route",
+                    name = r.Name,
+                    startedAt = r.StartedAt,
+                    endedAt = r.EndedAt,
+                    distanceMeters = r.DistanceMeters,
+                    notes = r.Notes
+                }
+            };
+        }).Where(f => f.geometry.coordinates.Length > 0);
+
+        var allFeatures = obsFeatures.Cast<object>().Concat(routeFeatures.Cast<object>()).ToList();
+        var geojson = new { type = "FeatureCollection", features = allFeatures };
         return JsonSerializer.SerializeToUtf8Bytes(geojson, new JsonSerializerOptions { WriteIndented = true });
     }
 

@@ -25,6 +25,8 @@ public record UpdateObservationRequest(
     double? Temperature, double? Humidity,
     string? HabitatDescription, string? HabitatPhotoUrl);
 
+public record UpdateObservationCoordinatesRequest(double Latitude, double Longitude);
+
 public record ObservationResponse(
     Guid Id, Guid ProjectId, Guid? RouteId, Guid UserId,
     long? TaxonId, string TaxonName, string? Title, string? Description,

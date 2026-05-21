@@ -107,26 +107,38 @@ void _showNotif(String elapsed, double km) {
 void _cancelNotif() => notifPlugin.cancel(id: _notifId);
 
 class RecordingNotifier extends StateNotifier<RecordingState> {
-  Timer? _gpsTimer;
+  StreamSubscription<Position>? _gpsSubscription;
   Timer? _clockTimer;
 
   RecordingNotifier() : super(const RecordingState());
 
+  Future<bool> _requestBackgroundPermission() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return false;
+    }
+
+    if (permission == LocationPermission.deniedForever) return false;
+
+    if (permission == LocationPermission.whileInUse) {
+      permission = await Geolocator.requestPermission();
+      if (permission != LocationPermission.always) return false;
+    }
+
+    return permission == LocationPermission.always;
+  }
+
   Future<void> start(String projectId, String routeName) async {
     if (state.active) return;
 
-    // ── 1. Verificar permisos ──────────────────────────────────────
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    final hasBackgroundPermission = await _requestBackgroundPermission();
+    if (!hasBackgroundPermission) return;
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
-    if (permission == LocationPermission.deniedForever) return;
-
-    // ── 2. Iniciar estado ──────────────────────────────────────────
     state = RecordingState(
       active: true,
       paused: false,
@@ -137,22 +149,80 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       routeName: routeName,
     );
 
-    // ── 3. Reloj UI (cada segundo) ────────────────────────────────
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      state = state.copyWith(routeName: state.routeName);
       _showNotif(state.elapsed, state.distanceMeters / 1000);
     });
 
-    // ── 4. Primer punto inmediato ─────────────────────────────────
     await _fetchAndAddPoint();
 
-    // ── 5. GPS polling cada 3 segundos (mucho más fiable que stream) ─
-    _gpsTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!state.active || state.paused) return;
-      _fetchAndAddPoint();
-    });
+    final locationSettings = AndroidSettings(
+      accuracy: LocationAccuracy.best,
+      distanceFilter: 5,
+      intervalDuration: const Duration(seconds: 3),
+      foregroundNotificationConfig: const ForegroundNotificationConfig(
+        notificationTitle: 'BioField — Grabando ruta',
+        notificationText: 'La app está grabando tu ruta en segundo plano',
+        notificationIcon: AndroidResource(name: '@mipmap/ic_launcher'),
+        enableWakeLock: true,
+      ),
+    );
+
+    _gpsSubscription = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen(
+      _onPosition,
+      onError: (e) => print('[GPS Stream] Error: $e'),
+    );
 
     _showNotif('00:00', 0);
+  }
+
+  void _onPosition(Position pos) {
+    if (!state.active || state.paused) return;
+
+    double? newHeading = pos.heading >= 0 ? pos.heading : null;
+    double? newSpeed = pos.speed >= 0 ? pos.speed : null;
+
+    if ((newSpeed == null || newSpeed < 0.1) && state.points.isNotEmpty) {
+      final last = state.points.last;
+      final dist = Geolocator.distanceBetween(
+          last.latitude, last.longitude, pos.latitude, pos.longitude);
+      newSpeed = dist / 3.0;
+    }
+
+    if ((newHeading == null || newHeading == 0) && state.points.isNotEmpty) {
+      final last = state.points.last;
+      final dist = Geolocator.distanceBetween(
+          last.latitude, last.longitude, pos.latitude, pos.longitude);
+      if (dist > 2) {
+        newHeading = Geolocator.bearingBetween(
+            last.latitude, last.longitude, pos.latitude, pos.longitude);
+        if (newHeading! < 0) newHeading += 360;
+      }
+    }
+
+    state = state.copyWith(
+      heading: newHeading ?? state.heading,
+      speed: newSpeed ?? state.speed,
+      accuracy: pos.accuracy,
+      altitude: pos.altitude,
+    );
+
+    if (pos.accuracy > 40) return;
+
+    final point = LatLng(pos.latitude, pos.longitude);
+    double extra = 0;
+    if (state.points.isNotEmpty) {
+      final last = state.points.last;
+      extra = Geolocator.distanceBetween(
+          last.latitude, last.longitude, pos.latitude, pos.longitude);
+      if (extra < 2) return;
+    }
+
+    state = state.copyWith(
+      points: [...state.points, point],
+      distanceMeters: state.distanceMeters + extra,
+    );
   }
 
   Future<void> _fetchAndAddPoint() async {
@@ -164,60 +234,18 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         ),
       );
 
-      // Siempre actualizar heading/speed/accuracy
-      double? newHeading = pos.heading >= 0 ? pos.heading : null;
-      double? newSpeed = pos.speed >= 0 ? pos.speed : null;
-
-      // Calcular velocidad manual si el GPS no la da
-      if ((newSpeed == null || newSpeed < 0.1) && state.points.isNotEmpty) {
-        final last = state.points.last;
-        final dist = Geolocator.distanceBetween(
-            last.latitude, last.longitude, pos.latitude, pos.longitude);
-        newSpeed = dist / 3.0; // distancia / intervalo de 3 seg
-      }
-
-      // Calcular heading manual si el GPS no lo da
-      if ((newHeading == null || newHeading == 0) && state.points.isNotEmpty) {
-        final last = state.points.last;
-        final dist = Geolocator.distanceBetween(
-            last.latitude, last.longitude, pos.latitude, pos.longitude);
-        if (dist > 2) {
-          newHeading = Geolocator.bearingBetween(
-              last.latitude, last.longitude, pos.latitude, pos.longitude);
-          if (newHeading < 0) newHeading += 360;
-        }
-      }
-
-      state = state.copyWith(
-        heading: newHeading ?? state.heading,
-        speed: newSpeed ?? state.speed,
-        accuracy: pos.accuracy,
-        altitude: pos.altitude,
-      );
-
-      // Filtrar puntos con mala precisión
-      if (pos.accuracy > 40) return;
-
-      final point = LatLng(pos.latitude, pos.longitude);
-      double extra = 0;
-      if (state.points.isNotEmpty) {
-        final last = state.points.last;
-        extra = Geolocator.distanceBetween(
-            last.latitude, last.longitude, pos.latitude, pos.longitude);
-        // Descartar ruido GPS (menos de 2m)
-        if (extra < 2) return;
-      }
-
-      state = state.copyWith(
-        points: [...state.points, point],
-        distanceMeters: state.distanceMeters + extra,
-      );
+      _onPosition(pos);
     } catch (e) {
       print('[GPS] Error: $e');
     }
   }
 
-  void togglePause() => state = state.copyWith(paused: !state.paused);
+  void togglePause() {
+    state = state.copyWith(paused: !state.paused);
+    if (!state.paused) {
+      _showNotif(state.elapsed, state.distanceMeters / 1000);
+    }
+  }
 
   void setName(String name) => state = state.copyWith(routeName: name);
 
@@ -225,7 +253,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
 
   Future<void> stop() async {
     _clockTimer?.cancel();
-    _gpsTimer?.cancel();
+    _gpsSubscription?.cancel();
     _cancelNotif();
     state = const RecordingState();
   }
@@ -233,7 +261,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   @override
   void dispose() {
     _clockTimer?.cancel();
-    _gpsTimer?.cancel();
+    _gpsSubscription?.cancel();
     super.dispose();
   }
 }

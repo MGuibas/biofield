@@ -119,6 +119,23 @@ public class ObservationDetailController(IObservationService observationService,
         catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
+    [HttpPatch("{id:guid}/coordinates")]
+    public async Task<IActionResult> UpdateCoordinates(Guid id, UpdateObservationCoordinatesRequest request)
+    {
+        try
+        {
+            var obs = await observationService.GetByIdAsync(id, UserId);
+            var req = new UpdateObservationRequest(
+                obs.RouteId, obs.TaxonId, obs.TaxonName, obs.Title, obs.Description,
+                request.Latitude, request.Longitude, obs.Altitude, obs.ObservedAt, obs.Notes,
+                obs.Quantity, obs.TagsJson, obs.WeatherCondition, obs.Temperature, obs.Humidity,
+                obs.HabitatDescription, obs.HabitatPhotoUrl);
+            return Ok(await observationService.UpdateAsync(id, req, UserId));
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {

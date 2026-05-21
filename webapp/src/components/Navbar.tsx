@@ -1,11 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
-import { API_BASE } from '../api'
+import { getAvatarUrl } from '../api'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
   const nav = useNavigate()
-  const baseUrl = API_BASE.replace('/api', '')
 
   return (
     <nav className="navbar">
@@ -14,10 +13,15 @@ export default function Navbar() {
       </div>
       <div className="navbar-spacer" />
       <div className="navbar-user">
+        {user?.role === 'Admin' && (
+          <button className="btn-outline" onClick={() => nav('/admin')} style={{ padding: '6px 14px', fontSize: 13, marginRight: 8, borderColor: 'var(--green)', color: 'var(--green)' }}>
+            ⚙️ Panel Admin
+          </button>
+        )}
         <span className="navbar-name">{user?.displayName}</span>
         <div className="avatar avatar-lg">
           {user?.avatarUrl
-            ? <img src={`${baseUrl}${user.avatarUrl}`} alt="" />
+            ? <img src={getAvatarUrl(user.avatarUrl) ?? ''} alt="" />
             : user?.displayName?.[0]?.toUpperCase() ?? '?'
           }
         </div>

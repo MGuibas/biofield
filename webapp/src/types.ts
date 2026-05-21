@@ -5,6 +5,10 @@ export interface User {
   avatarUrl?: string
   accessToken: string
   refreshToken: string
+  isGuest?: boolean
+  speciality?: string
+  institution?: string
+  role?: string
 }
 
 export interface Project {
@@ -113,4 +117,55 @@ export interface ProjectStats {
   obsByDay: DayStat[]
   obsByMember: MemberStat[]
   heatmapPoints: [number, number][]
+}
+
+export interface AdminUserSummary {
+  id: string
+  email: string
+  displayName: string
+  avatarUrl?: string
+  speciality?: string
+  institution?: string
+  role: string
+  createdAt: string
+  lastLogin?: string
+  projectCount: number
+  observationCount: number
+}
+
+export interface AdminUserProject {
+  id: string
+  name: string
+  description?: string
+  role: string
+  createdAt: string
+  observationCount: number
+  coverImageUrl?: string
+}
+
+export interface AdminUserObservation {
+  id: string
+  projectId: string
+  projectName: string
+  taxonName: string
+  title?: string
+  observedAt: string
+  quantity: number
+  latitude: number
+  longitude: number
+  photosJson?: string
+  description?: string
+  notes?: string
+  tagsJson?: string
+  weatherCondition?: string
+  temperature?: number
+  humidity?: number
+  habitatDescription?: string
+  habitatPhotoUrl?: string
+}
+
+export interface AdminUserDetail {
+  user: AdminUserSummary
+  projects: AdminUserProject[]
+  recentObservations: AdminUserObservation[]
 }

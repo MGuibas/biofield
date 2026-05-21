@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/remote/providers.dart';
 import '../../data/remote/api_client.dart';
 import '../../domain/models/models.dart';
+import '../../core/constants.dart';
 
 class ObservationDetailScreen extends ConsumerStatefulWidget {
   final ObservationModel observation;
@@ -494,7 +495,9 @@ class _CommentFieldState extends ConsumerState<_CommentField> {
 String _avatarUrl(String url, DateTime? dt) {
   if (url.startsWith('http')) return url;
   final cleanUrl = url.startsWith('/') ? url : '/$url';
-  return 'https://api.guibas.es$cleanUrl';
+  final uri = Uri.parse(AppConstants.apiBaseUrl);
+  final baseUrl = uri.hasPort ? '${uri.scheme}://${uri.host}:${uri.port}' : '${uri.scheme}://${uri.host}';
+  return '$baseUrl$cleanUrl';
 }
 
 String _timeAgo(DateTime dt) {

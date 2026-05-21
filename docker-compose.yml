@@ -40,7 +40,20 @@ services:
     depends_on:
       - postgres
       - minio
+    volumes:
+      - api-avatars:/app/wwwroot/avatars
+
+  webapp:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
 
 volumes:
   pgdata:
   miniodata:
+  api-avatars:

@@ -64,8 +64,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(authProvider, (previous, next) {
-      if (ref.read(authProvider.notifier).initialized && _controller.isCompleted) {
+    ref.listen(initializedProvider, (previous, next) {
+      if (next && _controller.isCompleted) {
         _proceed();
       }
     });

@@ -34,9 +34,16 @@ class UserModel {
         institution: j['institution'],
       );
 
-  UserModel copyWith({String? avatarUrl, String? displayName, String? speciality, String? institution}) => UserModel(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
+  UserModel copyWith({
+    String? accessToken,
+    String? refreshToken,
+    String? avatarUrl,
+    String? displayName,
+    String? speciality,
+    String? institution,
+  }) => UserModel(
+        accessToken: accessToken ?? this.accessToken,
+        refreshToken: refreshToken ?? this.refreshToken,
         userId: userId,
         displayName: displayName ?? this.displayName,
         email: email,

@@ -9,6 +9,7 @@ public class User
     public string? AvatarUrl { get; set; }
     public string? Speciality { get; set; }
     public string? Institution { get; set; }
+    public string Role { get; set; } = "User";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLogin { get; set; }
     public string? RefreshToken { get; set; }

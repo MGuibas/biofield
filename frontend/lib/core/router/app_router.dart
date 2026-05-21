@@ -15,6 +15,7 @@ import '../../presentation/auth/profile_screen.dart';
 import '../../presentation/auth/splash_screen.dart';
 import '../../presentation/identify/species_identifier_screen.dart';
 import '../../presentation/planning/map_planning_screen.dart';
+import '../../presentation/auth/permission_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final loggedIn = ref.watch(authProvider.select((u) => u != null));
@@ -23,27 +24,35 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     redirect: (context, state) {
       final authNotifier = ref.read(authProvider.notifier);
-      final initialized = authNotifier.initialized;
+      final initialized = ref.watch(initializedProvider);
+      final isFirstRun = authNotifier.isFirstRun;
       
       final onSplash = state.matchedLocation == '/splash';
       final onAuth = state.matchedLocation.startsWith('/auth');
+      final onPermissions = state.matchedLocation == '/permissions';
 
       // Mientras no esté inicializado, forzar estancia en Splash
       if (!initialized) return onSplash ? null : '/splash';
 
-      // Una vez inicializado:
+      // Si es la primera vez, ir a permisos
+      if (isFirstRun) {
+        return onPermissions ? null : '/permissions';
+      }
+
+      // Una vez inicializado y no primera vez:
       if (!loggedIn) {
         // No logueado: ir a login
         if (onAuth) return null;
         return '/auth/login';
       } else {
         // Logueado: no permitir login/splash, ir a proyectos
-        if (onAuth || onSplash) return '/projects';
+        if (onAuth || onSplash || onPermissions) return '/projects';
         return null;
       }
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/permissions', builder: (_, __) => const PermissionScreen()),
       GoRoute(path: '/auth/login',    builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       GoRoute(path: '/identify', builder: (_, __) => const SpeciesIdentifierScreen()),
