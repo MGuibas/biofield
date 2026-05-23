@@ -136,6 +136,12 @@ class $LocalObservationsTable extends LocalObservations
   late final GeneratedColumn<String> habitatPhotoUrl = GeneratedColumn<String>(
       'habitat_photo_url', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _routeIdMeta =
+      const VerificationMeta('routeId');
+  @override
+  late final GeneratedColumn<String> routeId = GeneratedColumn<String>(
+      'route_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -158,7 +164,8 @@ class $LocalObservationsTable extends LocalObservations
         temperature,
         humidity,
         habitatDescription,
-        habitatPhotoUrl
+        habitatPhotoUrl,
+        routeId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -283,6 +290,10 @@ class $LocalObservationsTable extends LocalObservations
           habitatPhotoUrl.isAcceptableOrUnknown(
               data['habitat_photo_url']!, _habitatPhotoUrlMeta));
     }
+    if (data.containsKey('route_id')) {
+      context.handle(_routeIdMeta,
+          routeId.isAcceptableOrUnknown(data['route_id']!, _routeIdMeta));
+    }
     return context;
   }
 
@@ -334,6 +345,8 @@ class $LocalObservationsTable extends LocalObservations
           DriftSqlType.string, data['${effectivePrefix}habitat_description']),
       habitatPhotoUrl: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}habitat_photo_url']),
+      routeId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}route_id']),
     );
   }
 
@@ -366,6 +379,7 @@ class LocalObservation extends DataClass
   final double? humidity;
   final String? habitatDescription;
   final String? habitatPhotoUrl;
+  final String? routeId;
   const LocalObservation(
       {required this.id,
       required this.projectId,
@@ -387,7 +401,8 @@ class LocalObservation extends DataClass
       this.temperature,
       this.humidity,
       this.habitatDescription,
-      this.habitatPhotoUrl});
+      this.habitatPhotoUrl,
+      this.routeId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -435,6 +450,9 @@ class LocalObservation extends DataClass
     }
     if (!nullToAbsent || habitatPhotoUrl != null) {
       map['habitat_photo_url'] = Variable<String>(habitatPhotoUrl);
+    }
+    if (!nullToAbsent || routeId != null) {
+      map['route_id'] = Variable<String>(routeId);
     }
     return map;
   }
@@ -484,6 +502,9 @@ class LocalObservation extends DataClass
       habitatPhotoUrl: habitatPhotoUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(habitatPhotoUrl),
+      routeId: routeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(routeId),
     );
   }
 
@@ -513,6 +534,7 @@ class LocalObservation extends DataClass
       habitatDescription:
           serializer.fromJson<String?>(json['habitatDescription']),
       habitatPhotoUrl: serializer.fromJson<String?>(json['habitatPhotoUrl']),
+      routeId: serializer.fromJson<String?>(json['routeId']),
     );
   }
   @override
@@ -540,6 +562,7 @@ class LocalObservation extends DataClass
       'humidity': serializer.toJson<double?>(humidity),
       'habitatDescription': serializer.toJson<String?>(habitatDescription),
       'habitatPhotoUrl': serializer.toJson<String?>(habitatPhotoUrl),
+      'routeId': serializer.toJson<String?>(routeId),
     };
   }
 
@@ -564,7 +587,8 @@ class LocalObservation extends DataClass
           Value<double?> temperature = const Value.absent(),
           Value<double?> humidity = const Value.absent(),
           Value<String?> habitatDescription = const Value.absent(),
-          Value<String?> habitatPhotoUrl = const Value.absent()}) =>
+          Value<String?> habitatPhotoUrl = const Value.absent(),
+          Value<String?> routeId = const Value.absent()}) =>
       LocalObservation(
         id: id ?? this.id,
         projectId: projectId ?? this.projectId,
@@ -593,6 +617,7 @@ class LocalObservation extends DataClass
         habitatPhotoUrl: habitatPhotoUrl.present
             ? habitatPhotoUrl.value
             : this.habitatPhotoUrl,
+        routeId: routeId.present ? routeId.value : this.routeId,
       );
   LocalObservation copyWithCompanion(LocalObservationsCompanion data) {
     return LocalObservation(
@@ -628,6 +653,7 @@ class LocalObservation extends DataClass
       habitatPhotoUrl: data.habitatPhotoUrl.present
           ? data.habitatPhotoUrl.value
           : this.habitatPhotoUrl,
+      routeId: data.routeId.present ? data.routeId.value : this.routeId,
     );
   }
 
@@ -654,7 +680,8 @@ class LocalObservation extends DataClass
           ..write('temperature: $temperature, ')
           ..write('humidity: $humidity, ')
           ..write('habitatDescription: $habitatDescription, ')
-          ..write('habitatPhotoUrl: $habitatPhotoUrl')
+          ..write('habitatPhotoUrl: $habitatPhotoUrl, ')
+          ..write('routeId: $routeId')
           ..write(')'))
         .toString();
   }
@@ -681,7 +708,8 @@ class LocalObservation extends DataClass
         temperature,
         humidity,
         habitatDescription,
-        habitatPhotoUrl
+        habitatPhotoUrl,
+        routeId
       ]);
   @override
   bool operator ==(Object other) =>
@@ -707,7 +735,8 @@ class LocalObservation extends DataClass
           other.temperature == this.temperature &&
           other.humidity == this.humidity &&
           other.habitatDescription == this.habitatDescription &&
-          other.habitatPhotoUrl == this.habitatPhotoUrl);
+          other.habitatPhotoUrl == this.habitatPhotoUrl &&
+          other.routeId == this.routeId);
 }
 
 class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
@@ -732,6 +761,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
   final Value<double?> humidity;
   final Value<String?> habitatDescription;
   final Value<String?> habitatPhotoUrl;
+  final Value<String?> routeId;
   final Value<int> rowid;
   const LocalObservationsCompanion({
     this.id = const Value.absent(),
@@ -755,6 +785,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
     this.humidity = const Value.absent(),
     this.habitatDescription = const Value.absent(),
     this.habitatPhotoUrl = const Value.absent(),
+    this.routeId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalObservationsCompanion.insert({
@@ -779,6 +810,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
     this.humidity = const Value.absent(),
     this.habitatDescription = const Value.absent(),
     this.habitatPhotoUrl = const Value.absent(),
+    this.routeId = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         projectId = Value(projectId),
@@ -809,6 +841,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
     Expression<double>? humidity,
     Expression<String>? habitatDescription,
     Expression<String>? habitatPhotoUrl,
+    Expression<String>? routeId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -833,6 +866,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
       if (humidity != null) 'humidity': humidity,
       if (habitatDescription != null) 'habitat_description': habitatDescription,
       if (habitatPhotoUrl != null) 'habitat_photo_url': habitatPhotoUrl,
+      if (routeId != null) 'route_id': routeId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -859,6 +893,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
       Value<double?>? humidity,
       Value<String?>? habitatDescription,
       Value<String?>? habitatPhotoUrl,
+      Value<String?>? routeId,
       Value<int>? rowid}) {
     return LocalObservationsCompanion(
       id: id ?? this.id,
@@ -882,6 +917,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
       humidity: humidity ?? this.humidity,
       habitatDescription: habitatDescription ?? this.habitatDescription,
       habitatPhotoUrl: habitatPhotoUrl ?? this.habitatPhotoUrl,
+      routeId: routeId ?? this.routeId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -952,6 +988,9 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
     if (habitatPhotoUrl.present) {
       map['habitat_photo_url'] = Variable<String>(habitatPhotoUrl.value);
     }
+    if (routeId.present) {
+      map['route_id'] = Variable<String>(routeId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -982,6 +1021,7 @@ class LocalObservationsCompanion extends UpdateCompanion<LocalObservation> {
           ..write('humidity: $humidity, ')
           ..write('habitatDescription: $habitatDescription, ')
           ..write('habitatPhotoUrl: $habitatPhotoUrl, ')
+          ..write('routeId: $routeId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2623,6 +2663,7 @@ typedef $$LocalObservationsTableCreateCompanionBuilder
   Value<double?> humidity,
   Value<String?> habitatDescription,
   Value<String?> habitatPhotoUrl,
+  Value<String?> routeId,
   Value<int> rowid,
 });
 typedef $$LocalObservationsTableUpdateCompanionBuilder
@@ -2648,6 +2689,7 @@ typedef $$LocalObservationsTableUpdateCompanionBuilder
   Value<double?> humidity,
   Value<String?> habitatDescription,
   Value<String?> habitatPhotoUrl,
+  Value<String?> routeId,
   Value<int> rowid,
 });
 
@@ -2725,6 +2767,9 @@ class $$LocalObservationsTableFilterComposer
   ColumnFilters<String> get habitatPhotoUrl => $composableBuilder(
       column: $table.habitatPhotoUrl,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get routeId => $composableBuilder(
+      column: $table.routeId, builder: (column) => ColumnFilters(column));
 }
 
 class $$LocalObservationsTableOrderingComposer
@@ -2801,6 +2846,9 @@ class $$LocalObservationsTableOrderingComposer
   ColumnOrderings<String> get habitatPhotoUrl => $composableBuilder(
       column: $table.habitatPhotoUrl,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get routeId => $composableBuilder(
+      column: $table.routeId, builder: (column) => ColumnOrderings(column));
 }
 
 class $$LocalObservationsTableAnnotationComposer
@@ -2874,6 +2922,9 @@ class $$LocalObservationsTableAnnotationComposer
 
   GeneratedColumn<String> get habitatPhotoUrl => $composableBuilder(
       column: $table.habitatPhotoUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get routeId =>
+      $composableBuilder(column: $table.routeId, builder: (column) => column);
 }
 
 class $$LocalObservationsTableTableManager extends RootTableManager<
@@ -2925,6 +2976,7 @@ class $$LocalObservationsTableTableManager extends RootTableManager<
             Value<double?> humidity = const Value.absent(),
             Value<String?> habitatDescription = const Value.absent(),
             Value<String?> habitatPhotoUrl = const Value.absent(),
+            Value<String?> routeId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalObservationsCompanion(
@@ -2949,6 +3001,7 @@ class $$LocalObservationsTableTableManager extends RootTableManager<
             humidity: humidity,
             habitatDescription: habitatDescription,
             habitatPhotoUrl: habitatPhotoUrl,
+            routeId: routeId,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2973,6 +3026,7 @@ class $$LocalObservationsTableTableManager extends RootTableManager<
             Value<double?> humidity = const Value.absent(),
             Value<String?> habitatDescription = const Value.absent(),
             Value<String?> habitatPhotoUrl = const Value.absent(),
+            Value<String?> routeId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalObservationsCompanion.insert(
@@ -2997,6 +3051,7 @@ class $$LocalObservationsTableTableManager extends RootTableManager<
             humidity: humidity,
             habitatDescription: habitatDescription,
             habitatPhotoUrl: habitatPhotoUrl,
+            routeId: routeId,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

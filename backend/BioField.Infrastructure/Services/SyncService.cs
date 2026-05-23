@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Linq;
 using BioField.Application.DTOs;
 using BioField.Application.Interfaces;
 using BioField.Domain.Entities;
@@ -14,7 +15,14 @@ public class SyncService(AppDbContext db) : ISyncService
         var failed = new List<Guid>();
         var processed = 0;
 
-        foreach (var item in request.Items)
+        var sortedItems = request.Items
+            .OrderBy(item => 
+                item.Operation == "delete" 
+                    ? (item.EntityType.Equals("observation", StringComparison.OrdinalIgnoreCase) ? 1 : 2)
+                    : (item.EntityType.Equals("route", StringComparison.OrdinalIgnoreCase) ? 3 : 4)
+            ).ToList();
+
+        foreach (var item in sortedItems)
         {
             try
             {
@@ -93,10 +101,26 @@ public class SyncService(AppDbContext db) : ISyncService
             var existing = await db.Observations.FindAsync(item.EntityId);
             if (existing == null)
             {
+                var projectId = data.GetProperty("projectId").GetGuid();
+                var routeId = data.TryGetProperty("routeId", out var r) && r.ValueKind != JsonValueKind.Null ? (Guid?)r.GetGuid() : null;
+                if (routeId.HasValue && !await db.Routes.AnyAsync(rt => rt.Id == routeId.Value))
+                {
+                    db.Routes.Add(new Route
+                    {
+                        Id = routeId.Value,
+                        ProjectId = projectId,
+                        UserId = userId,
+                        Name = "Ruta en grabación",
+                        StartedAt = DateTime.UtcNow
+                    });
+                    await db.SaveChangesAsync();
+                }
+
                 db.Observations.Add(new Observation
                 {
                     Id = item.EntityId,
-                    ProjectId = data.GetProperty("projectId").GetGuid(),
+                    ProjectId = projectId,
+                    RouteId = routeId,
                     UserId = userId,
                     TaxonName = data.GetProperty("taxonName").GetString() ?? "",
                     Latitude = data.GetProperty("latitude").GetDouble(),
@@ -109,6 +133,21 @@ public class SyncService(AppDbContext db) : ISyncService
             }
             else if (existing.UserId == userId)
             {
+                var routeId = data.TryGetProperty("routeId", out var r) && r.ValueKind != JsonValueKind.Null ? (Guid?)r.GetGuid() : null;
+                if (routeId.HasValue && !await db.Routes.AnyAsync(rt => rt.Id == routeId.Value))
+                {
+                    db.Routes.Add(new Route
+                    {
+                        Id = routeId.Value,
+                        ProjectId = existing.ProjectId,
+                        UserId = userId,
+                        Name = "Ruta en grabación",
+                        StartedAt = DateTime.UtcNow
+                    });
+                    await db.SaveChangesAsync();
+                }
+
+                existing.RouteId = routeId ?? existing.RouteId;
                 existing.TaxonName = data.GetProperty("taxonName").GetString() ?? existing.TaxonName;
                 existing.Notes = data.TryGetProperty("notes", out var n) ? n.GetString() : existing.Notes;
                 existing.UpdatedAt = DateTime.UtcNow;

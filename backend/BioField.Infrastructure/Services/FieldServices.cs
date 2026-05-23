@@ -26,7 +26,7 @@ public class RouteService(AppDbContext db, IStorageService storage) : IRouteServ
         await EnsureMemberAsync(projectId, userId);
         var route = new Route
         {
-            Id = Guid.NewGuid(), ProjectId = projectId, UserId = userId,
+            Id = request.Id ?? Guid.NewGuid(), ProjectId = projectId, UserId = userId,
             Name = request.Name, StartedAt = request.StartedAt, Notes = request.Notes
         };
         db.Routes.Add(route);
@@ -49,9 +49,16 @@ public class RouteService(AppDbContext db, IStorageService storage) : IRouteServ
 
     public async Task DeleteAsync(Guid routeId, Guid userId)
     {
-        var route = await db.Routes.FindAsync(routeId) ?? throw new KeyNotFoundException();
+        var route = await db.Routes
+            .Include(r => r.Observations)
+            .FirstOrDefaultAsync(r => r.Id == routeId) ?? throw new KeyNotFoundException();
         if (route.UserId != userId) throw new UnauthorizedAccessException();
         
+        foreach (var obs in route.Observations)
+        {
+            obs.RouteId = null;
+        }
+
         if (!string.IsNullOrEmpty(route.GpxFileUrl))
         {
             await storage.DeleteAsync(route.GpxFileUrl);
@@ -92,6 +99,21 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
     public async Task<ObservationResponse> CreateAsync(Guid projectId, CreateObservationRequest request, Guid userId)
     {
         await EnsureMemberAsync(projectId, userId);
+        
+        if (request.RouteId.HasValue && !await db.Routes.AnyAsync(r => r.Id == request.RouteId.Value))
+        {
+            var placeholder = new Route
+            {
+                Id = request.RouteId.Value,
+                ProjectId = projectId,
+                UserId = userId,
+                Name = "Ruta en grabación",
+                StartedAt = DateTime.UtcNow
+            };
+            db.Routes.Add(placeholder);
+            await db.SaveChangesAsync();
+        }
+
         var obs = new Observation
         {
             Id = Guid.NewGuid(), ProjectId = projectId, UserId = userId,

@@ -1,10 +1,10 @@
 # Build stage
-FROM node:22 AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 
-# Copy package files
+# Copy package files and install deps
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 # Copy the rest of the source code
 COPY . .

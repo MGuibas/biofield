@@ -1030,109 +1030,91 @@ class _ActivityTab extends ConsumerWidget {
                                     color: theme.colorScheme.outlineVariant
                                         .withOpacity(0.5)),
                               ),
-                              child: InkWell(
-                                onTap: () {
-                                  if (a.itemId != null) {
-                                    if (a.type == 'observation')
-                                      context.go(
-                                          '/projects/$projectId/observations/${a.itemId}');
-                                    if (a.type == 'note') {
-                                      /* Note detail not implemented yet */
-                                    }
-                                    if (a.type == 'route')
-                                      context.go(
-                                          '/projects/$projectId/routes/${a.itemId}/view');
-                                  }
-                                },
-                                borderRadius: BorderRadius.circular(20),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(a.actorName,
-                                              style: const TextStyle(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(a.actorName,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                letterSpacing: 0.2)),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                              color: theme
+                                                  .colorScheme.surfaceVariant
+                                                  .withOpacity(0.5),
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                          child: Text(_timeAgo(a.occurredAt),
+                                              style: TextStyle(
+                                                  fontSize: 10,
                                                   fontWeight: FontWeight.bold,
-                                                  fontSize: 13,
-                                                  letterSpacing: 0.2)),
-                                          const Spacer(),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                                color: theme
-                                                    .colorScheme.surfaceVariant
-                                                    .withOpacity(0.5),
-                                                borderRadius:
-                                                    BorderRadius.circular(8)),
-                                            child: Text(_timeAgo(a.occurredAt),
-                                                style: TextStyle(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: theme
-                                                        .colorScheme.primary
-                                                        .withOpacity(0.7))),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(a.description,
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                  height: 1.4,
                                                   color: theme
-                                                      .colorScheme.onSurface
-                                                      .withOpacity(0.9))),
-                                      if (a.type == 'observation' &&
-                                          photoToUse != null) ...[
-                                        const SizedBox(height: 16),
-                                        ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          child: Stack(
-                                            children: [
-                                              CachedNetworkImage(
-                                                imageUrl: _observationPhotoUrl(
-                                                    photoToUse, a.occurredAt),
-                                                height: 180,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
-                                                memCacheWidth:
-                                                    600, // Optimización: suficente para ancho completo móvil
-                                                placeholder: (_, __) => Container(
-                                                    height: 180,
-                                                    color: theme.colorScheme
-                                                        .surfaceVariant,
-                                                    child: const Center(
-                                                        child:
-                                                            CircularProgressIndicator())),
-                                                errorWidget: (_, __, ___) =>
-                                                    const SizedBox.shrink(),
-                                              ),
-                                              Positioned(
-                                                top: 12,
-                                                right: 12,
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.all(8),
-                                                  decoration: BoxDecoration(
-                                                      color: Colors.black
-                                                          .withOpacity(0.4),
-                                                      shape: BoxShape.circle),
-                                                  child: const Icon(Icons.eco,
-                                                      color: Colors.white,
-                                                      size: 16),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                                      .colorScheme.primary
+                                                      .withOpacity(0.7))),
                                         ),
                                       ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(a.description,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                                height: 1.4,
+                                                color: theme
+                                                    .colorScheme.onSurface
+                                                    .withOpacity(0.9))),
+                                    if (a.type == 'observation' &&
+                                        photoToUse != null) ...[
+                                      const SizedBox(height: 16),
+                                      ClipRRect(
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        child: Stack(
+                                          children: [
+                                            CachedNetworkImage(
+                                              imageUrl: _observationPhotoUrl(
+                                                  photoToUse, a.occurredAt),
+                                              height: 180,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                              memCacheWidth: 600,
+                                              placeholder: (_, __) => Container(
+                                                  height: 180,
+                                                  color: theme.colorScheme
+                                                      .surfaceVariant,
+                                                  child: const Center(
+                                                      child:
+                                                          CircularProgressIndicator())),
+                                              errorWidget: (_, __, ___) =>
+                                                  const SizedBox.shrink(),
+                                            ),
+                                            Positioned(
+                                              top: 12,
+                                              right: 12,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                    color: Colors.black
+                                                        .withOpacity(0.4),
+                                                    shape: BoxShape.circle),
+                                                child: const Icon(Icons.eco,
+                                                    color: Colors.white,
+                                                    size: 16),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
-                                  ),
+                                  ],
                                 ),
                               ),
                             ),

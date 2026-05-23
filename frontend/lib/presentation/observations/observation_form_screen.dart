@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../data/remote/providers.dart';
 import '../../data/remote/api_client.dart';
-import '../../data/sync/sync_service.dart';
 import '../../domain/models/models.dart';
 import '../../core/services/weather_service.dart';
 
@@ -211,6 +210,8 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
       ref.invalidate(observationsPageProvider((projectId: widget.projectId, page: 1)));
       if (mounted) context.pop();
     } catch (_) {
+      // Guardado local offline desactivado temporalmente
+      /*
       await ref.read(syncServiceProvider).saveObservationOffline(
         projectId:  widget.projectId,
         taxonName:  _selectedTaxonName!,
@@ -227,6 +228,7 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
         temperature: _temp.text.isEmpty ? null : double.tryParse(_temp.text),
         humidity: _humidity.text.isEmpty ? null : double.tryParse(_humidity.text),
         habitatDescription: _habitatDesc.text.trim().isEmpty ? null : _habitatDesc.text.trim(),
+        routeId: widget.routeId ?? widget.existing?.routeId,
       );
       if (widget.existing != null) {
         ref.invalidate(observationDetailProvider(widget.existing!.id));
@@ -237,6 +239,17 @@ class _ObservationFormScreenState extends ConsumerState<ObservationFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('💾 Guardado localmente (Offline)')));
         context.pop();
+      }
+      */
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al guardar la observación. El guardado local está temporalmente desactivado.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

@@ -31,6 +31,7 @@ class LocalObservations extends Table {
   RealColumn get humidity => real().nullable()();
   TextColumn get habitatDescription => text().nullable()();
   TextColumn get habitatPhotoUrl => text().nullable()();
+  TextColumn get routeId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -93,7 +94,7 @@ class LocalDb extends _$LocalDb {
   LocalDb() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +112,9 @@ class LocalDb extends _$LocalDb {
       }
       if (from < 3) {
         await m.createTable(localProjects);
+      }
+      if (from < 4) {
+        await m.addColumn(localObservations, localObservations.routeId);
       }
     },
   );

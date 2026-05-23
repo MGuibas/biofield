@@ -5,6 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../data/remote/providers.dart';
 import '../../domain/models/models.dart';
+import 'package:go_router/go_router.dart';
+import '../../data/sync/sync_service.dart';
+import 'package:drift/drift.dart' as drift;
+import '../../data/local/local_db.dart';
+import '../../data/remote/api_client.dart';
 
 class RouteDetailScreen extends ConsumerWidget {
   final RouteModel route;
@@ -13,7 +18,7 @@ class RouteDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final r = route;
-    final dur = r.endedAt != null ? r.endedAt!.difference(r.startedAt) : null;
+    final dur = r.endedAt?.difference(r.startedAt);
     final observations = ref.watch(observationsProvider(r.projectId));
 
     List<LatLng> points = [];
@@ -26,7 +31,20 @@ class RouteDetailScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(r.name)),
+      appBar: AppBar(
+        title: Text(r.name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Renombrar ruta',
+            onPressed: () => _renameRoute(context, ref, r),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _deleteRoute(context, ref, r),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -119,4 +137,112 @@ class RouteDetailScreen extends ConsumerWidget {
       Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
     ],
   );
+
+  Future<void> _renameRoute(BuildContext context, WidgetRef ref, RouteModel route) async {
+    final ctrl = TextEditingController(text: route.name);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Renombrar ruta'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Ej: Transecto Norte',
+            labelText: 'Nombre de la ruta',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final v = ctrl.text.trim();
+              Navigator.pop(context, v.isNotEmpty ? v : null);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName == null || newName == route.name) return;
+    try {
+      await ref.read(dioProvider).put(
+        '/routes/${route.id}',
+        data: {
+          'name': newName,
+          'endedAt': route.endedAt?.toIso8601String(),
+          'distanceMeters': route.distanceMeters,
+          'trackPointsJson': route.trackPointsJson,
+          'notes': route.notes,
+        },
+      );
+      ref.invalidate(routesProvider(route.projectId));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ruta renombrada correctamente')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al renombrar la ruta: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteRoute(BuildContext context, WidgetRef ref, RouteModel route) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar ruta'),
+        content: const Text('¿Seguro que quieres eliminar esta ruta? Las observaciones asociadas no se borrarán, pero dejarán de estar vinculadas a la ruta.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        if (route.projectId != 'OFFLINE_GUEST') {
+          await ref.read(dioProvider).delete('/routes/${route.id}');
+        }
+        
+        final db = ref.read(localDbProvider);
+        await (db.update(db.localObservations)
+              ..where((o) => o.routeId.equals(route.id)))
+            .write(const LocalObservationsCompanion(routeId: drift.Value(null)));
+
+        await (db.delete(db.localRoutes)..where((r) => r.id.equals(route.id))).go();
+
+        ref.invalidate(routesProvider(route.projectId));
+        ref.invalidate(observationsProvider(route.projectId));
+
+        if (context.mounted) {
+          context.pop();
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al eliminar la ruta: $e')),
+          );
+        }
+      }
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/notifications.dart';
@@ -18,6 +19,7 @@ class RecordingState {
   final double? speed;
   final double? accuracy;
   final double? altitude;
+  final int elapsedSeconds;
 
   const RecordingState({
     this.active = false,
@@ -32,6 +34,7 @@ class RecordingState {
     this.speed,
     this.accuracy,
     this.altitude,
+    this.elapsedSeconds = 0,
   });
 
   RecordingState copyWith({
@@ -39,6 +42,7 @@ class RecordingState {
     double? distanceMeters, DateTime? startedAt,
     String? projectId, String? routeName, String? activeRouteId,
     double? heading, double? speed, double? accuracy, double? altitude,
+    int? elapsedSeconds,
   }) => RecordingState(
     active: active ?? this.active,
     paused: paused ?? this.paused,
@@ -52,14 +56,13 @@ class RecordingState {
     speed: speed ?? this.speed,
     accuracy: accuracy ?? this.accuracy,
     altitude: altitude ?? this.altitude,
+    elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
   );
 
   String get elapsed {
-    if (startedAt == null) return '00:00';
-    final d = DateTime.now().difference(startedAt!);
-    final h = d.inHours;
-    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    final h = elapsedSeconds ~/ 3600;
+    final m = ((elapsedSeconds % 3600) ~/ 60).toString().padLeft(2, '0');
+    final s = (elapsedSeconds % 60).toString().padLeft(2, '0');
     if (h > 0) return '$h:$m:$s';
     return '$m:$s';
   }
@@ -109,6 +112,7 @@ void _cancelNotif() => notifPlugin.cancel(id: _notifId);
 class RecordingNotifier extends StateNotifier<RecordingState> {
   StreamSubscription<Position>? _gpsSubscription;
   Timer? _clockTimer;
+  int _secondsSinceLastPoint = 0;
 
   RecordingNotifier() : super(const RecordingState());
 
@@ -139,6 +143,8 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
     final hasBackgroundPermission = await _requestBackgroundPermission();
     if (!hasBackgroundPermission) return;
 
+    final routeId = const Uuid().v4();
+
     state = RecordingState(
       active: true,
       paused: false,
@@ -147,9 +153,22 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       startedAt: DateTime.now(),
       projectId: projectId,
       routeName: routeName,
+      activeRouteId: routeId,
     );
 
+    _secondsSinceLastPoint = 0;
+
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!state.active || state.paused) return;
+
+      state = state.copyWith(elapsedSeconds: state.elapsedSeconds + 1);
+      _secondsSinceLastPoint++;
+
+      if (_secondsSinceLastPoint >= 30) {
+        _secondsSinceLastPoint = 0;
+        _fetchAndAddPoint(force: true);
+      }
+
       _showNotif(state.elapsed, state.distanceMeters / 1000);
     });
 
@@ -178,6 +197,10 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
   }
 
   void _onPosition(Position pos) {
+    _addPoint(pos, force: false);
+  }
+
+  void _addPoint(Position pos, {required bool force}) {
     if (!state.active || state.paused) return;
 
     double? newHeading = pos.heading >= 0 ? pos.heading : null;
@@ -197,7 +220,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       if (dist > 2) {
         newHeading = Geolocator.bearingBetween(
             last.latitude, last.longitude, pos.latitude, pos.longitude);
-        if (newHeading! < 0) newHeading += 360;
+        if (newHeading < 0) newHeading += 360;
       }
     }
 
@@ -208,7 +231,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       altitude: pos.altitude,
     );
 
-    if (pos.accuracy > 40) return;
+    if (!force && pos.accuracy > 40) return;
 
     final point = LatLng(pos.latitude, pos.longitude);
     double extra = 0;
@@ -216,16 +239,17 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
       final last = state.points.last;
       extra = Geolocator.distanceBetween(
           last.latitude, last.longitude, pos.latitude, pos.longitude);
-      if (extra < 2) return;
+      if (!force && extra < 2) return;
     }
 
     state = state.copyWith(
       points: [...state.points, point],
       distanceMeters: state.distanceMeters + extra,
     );
+    _secondsSinceLastPoint = 0;
   }
 
-  Future<void> _fetchAndAddPoint() async {
+  Future<void> _fetchAndAddPoint({bool force = false}) async {
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -234,7 +258,7 @@ class RecordingNotifier extends StateNotifier<RecordingState> {
         ),
       );
 
-      _onPosition(pos);
+      _addPoint(pos, force: force);
     } catch (e) {
       print('[GPS] Error: $e');
     }

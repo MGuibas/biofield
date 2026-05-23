@@ -17,9 +17,20 @@ interface Props {
   onObsClick?: (obs: Observation) => void
   editMode?: boolean
   onObservationMove?: (id: string, lat: number, lng: number) => void
+  isRouteEditMode?: boolean
+  onRoutePointsChange?: (points: { lat: number; lon: number }[]) => void
 }
 
-export default function ProjectMap({ observations, routes, height = 400, onObsClick, editMode = false, onObservationMove }: Props) {
+export default function ProjectMap({
+  observations,
+  routes,
+  height = 400,
+  onObsClick,
+  editMode = false,
+  onObservationMove,
+  isRouteEditMode = false,
+  onRoutePointsChange
+}: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const obsMapRef = useRef<Map<string, Observation>>(new Map())
@@ -27,6 +38,8 @@ export default function ProjectMap({ observations, routes, height = 400, onObsCl
   onObsClickRef.current = onObsClick
   const onObservationMoveRef = useRef(onObservationMove)
   onObservationMoveRef.current = onObservationMove
+  const onRoutePointsChangeRef = useRef(onRoutePointsChange)
+  onRoutePointsChangeRef.current = onRoutePointsChange
   const hasFittedRef = useRef(false)
 
   useEffect(() => {
@@ -210,6 +223,41 @@ export default function ProjectMap({ observations, routes, height = 400, onObsCl
               .addTo(map)
           }
         }
+
+        // Draw draggable markers for each trackpoint in edit mode
+        if (isRouteEditMode && onRoutePointsChangeRef.current) {
+          lls.forEach((ll, idx) => {
+            const ptMarker = L.marker(ll, {
+              draggable: true,
+              icon: L.divIcon({
+                className: 'route-edit-point-marker',
+                html: `<div style="
+                  width: 14px;
+                  height: 14px;
+                  background: #3b82f6;
+                  border: 2px solid white;
+                  border-radius: 50%;
+                  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+                  cursor: move;
+                "></div>`,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+              })
+            }).addTo(map)
+
+            ptMarker.on('drag', (e) => {
+              const newLatLng = (e.target as L.Marker).getLatLng()
+              lls[idx] = newLatLng
+              mainLine.setLatLngs(lls)
+              glowLine.setLatLngs(lls)
+            })
+
+            ptMarker.on('dragend', () => {
+              const updated = lls.map(l => ({ lat: l.lat, lon: l.lng }))
+              onRoutePointsChangeRef.current?.(updated)
+            })
+          })
+        }
       } catch { /* invalid json */ }
     })
 
@@ -217,7 +265,7 @@ export default function ProjectMap({ observations, routes, height = 400, onObsCl
       map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] })
       hasFittedRef.current = true
     }
-  }, [observations, routes, editMode])
+  }, [observations, routes, editMode, isRouteEditMode])
 
   return <div ref={ref} style={{ height, borderRadius: 8, overflow: 'hidden' }} />
 }

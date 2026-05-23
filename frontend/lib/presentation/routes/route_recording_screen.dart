@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:dio/dio.dart';
 import '../../data/remote/providers.dart';
 import '../../data/remote/api_client.dart';
 import '../../data/sync/sync_service.dart';
@@ -53,9 +54,21 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
     super.dispose();
   }
 
-  void _start() {
+  Future<void> _start() async {
     final defaultName = 'Ruta ${DateTime.now().day}/${DateTime.now().month}';
-    ref.read(recordingProvider.notifier).start(widget.projectId, defaultName);
+    await ref.read(recordingProvider.notifier).start(widget.projectId, defaultName);
+    final rec = ref.read(recordingProvider);
+    if (rec.active && widget.projectId != 'OFFLINE_GUEST' && rec.activeRouteId != null) {
+      try {
+        await ref.read(dioProvider).post('/projects/${widget.projectId}/routes', data: {
+          'id': rec.activeRouteId,
+          'name': rec.routeName,
+          'startedAt': rec.startedAt!.toIso8601String(),
+        });
+      } catch (e) {
+        print('[Route Recording] Pre-creating route failed: $e');
+      }
+    }
   }
 
   void _editName(BuildContext context, String current) {
@@ -95,20 +108,39 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
     setState(() => _saving = true);
     final trackJson = '[${rec.points.map((p) => '{"lat":${p.latitude},"lon":${p.longitude}}').join(',')}]';
     try {
-      final res = await ref.read(dioProvider).post('/projects/${widget.projectId}/routes', data: {
-        'name': rec.routeName, 'startedAt': rec.startedAt!.toIso8601String(),
-      });
-      final routeId = res.data['id'] as String;
-      await ref.read(dioProvider).put('/routes/$routeId', data: {
-        'name': rec.routeName,
-        'endedAt': DateTime.now().toIso8601String(),
-        'distanceMeters': rec.distanceMeters,
-        'trackPointsJson': trackJson,
-      });
-      ref.read(recordingProvider.notifier).setActiveRouteId(routeId);
+      if (widget.projectId == 'OFFLINE_GUEST') {
+        throw Exception('Offline guest mode');
+      }
+      try {
+        await ref.read(dioProvider).put('/routes/${rec.activeRouteId}', data: {
+          'name': rec.routeName,
+          'endedAt': DateTime.now().toIso8601String(),
+          'distanceMeters': rec.distanceMeters,
+          'trackPointsJson': trackJson,
+        });
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          final res = await ref.read(dioProvider).post('/projects/${widget.projectId}/routes', data: {
+            'id': rec.activeRouteId,
+            'name': rec.routeName,
+            'startedAt': rec.startedAt!.toIso8601String(),
+          });
+          final routeId = res.data['id'] as String;
+          await ref.read(dioProvider).put('/routes/$routeId', data: {
+            'name': rec.routeName,
+            'endedAt': DateTime.now().toIso8601String(),
+            'distanceMeters': rec.distanceMeters,
+            'trackPointsJson': trackJson,
+          });
+        } else {
+          rethrow;
+        }
+      }
+      ref.read(recordingProvider.notifier).setActiveRouteId(rec.activeRouteId!);
       ref.invalidate(routesProvider(widget.projectId));
     } catch (_) {
       await ref.read(syncServiceProvider).saveRouteOffline(
+        id: rec.activeRouteId,
         projectId: widget.projectId,
         name: rec.routeName,
         startedAt: rec.startedAt!,
@@ -291,9 +323,26 @@ class _RouteRecordingScreenState extends ConsumerState<RouteRecordingScreen> wit
                       child: ListTile(
                         onTap: () => context.go('/projects/${widget.projectId}/observations/new', extra: {'routeId': rec.activeRouteId}),
                         leading: const CircleAvatar(backgroundColor: Color(0xFF2E7D32), child: Icon(Icons.add_a_photo, color: Colors.white, size: 20)),
-                        title: const Text('Nueva Observación', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        subtitle: const Text('Añadir hallazgo en este punto', style: TextStyle(fontSize: 11)),
-                        trailing: const Icon(Icons.chevron_right, size: 20),
+                        title: const Text(
+                          'Nueva Observación', 
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Añadir hallazgo en este punto', 
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.chevron_right, 
+                          size: 20,
+                          color: Colors.black54,
+                        ),
                       ),
                     ),
                   ),

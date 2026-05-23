@@ -1,6 +1,6 @@
 namespace BioField.Application.DTOs;
 
-public record CreateRouteRequest(string Name, DateTime StartedAt, string? Notes);
+public record CreateRouteRequest(string Name, DateTime StartedAt, string? Notes, Guid? Id = null);
 public record UpdateRouteRequest(string Name, DateTime? EndedAt, double DistanceMeters, string? TrackPointsJson, string? Notes);
 public record RouteResponse(
     Guid Id, Guid ProjectId, Guid UserId, string Name,

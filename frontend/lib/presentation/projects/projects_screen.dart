@@ -27,11 +27,18 @@ class ProjectsScreen extends ConsumerWidget {
               IconButton(
                 icon: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.map_outlined, color: Colors.blue, size: 20),
+                  decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), shape: BoxShape.circle),
+                  child: const Icon(Icons.map_outlined, color: Colors.grey, size: 20),
                 ),
-                tooltip: 'Planificación Offline',
-                onPressed: () => context.go('/planning'),
+                tooltip: 'Planificación Offline (Desactivado)',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('La descarga de mapas offline está desactivada temporalmente.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
               ),
               IconButton(
                 icon: Container(
@@ -53,6 +60,48 @@ class ProjectsScreen extends ConsumerWidget {
               const SizedBox(width: 8),
             ],
             backgroundColor: theme.colorScheme.surface,
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.brightness == Brightness.dark 
+                      ? Colors.amber.shade900.withOpacity(0.2) 
+                      : Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.brightness == Brightness.dark 
+                        ? Colors.amber.shade800.withOpacity(0.4) 
+                        : Colors.amber.shade200,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: theme.brightness == Brightness.dark 
+                          ? Colors.amber.shade200 
+                          : Colors.amber.shade800,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Las funciones locales (guardado offline y descarga de mapas) están temporalmente desactivadas.',
+                        style: TextStyle(
+                          color: theme.brightness == Brightness.dark 
+                              ? Colors.amber.shade100 
+                              : Colors.amber.shade900,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           if (rec.active)
             SliverToBoxAdapter(
@@ -105,46 +154,55 @@ class ProjectsScreen extends ConsumerWidget {
             loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
             error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
             data: (list) {
-              final local = list.firstWhere((p) => p.id == 'OFFLINE_GUEST');
               final user = ref.read(authProvider);
               if (user?.isGuest == true) return const SliverToBoxAdapter(child: SizedBox.shrink());
               
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 sliver: SliverToBoxAdapter(
-                  child: InkWell(
-                    onTap: () => context.go('/projects/${local.id}'),
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade900.withOpacity(0.8), Colors.blue.shade800.withOpacity(0.4)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                  child: Opacity(
+                    opacity: 0.5,
+                    child: InkWell(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('El espacio local está desactivado temporalmente.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue.shade900.withOpacity(0.8), Colors.blue.shade800.withOpacity(0.4)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.blue.withOpacity(0.3)),
                         ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.2), shape: BoxShape.circle),
-                            child: const Icon(Icons.phonelink_setup, color: Colors.blue, size: 28),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Espacio Local', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                                Text('Datos guardados en este dispositivo', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
-                              ],
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(color: Colors.blue.withOpacity(0.2), shape: BoxShape.circle),
+                              child: const Icon(Icons.phonelink_setup, color: Colors.blue, size: 28),
                             ),
-                          ),
-                          const Icon(Icons.chevron_right, color: Colors.white54),
-                        ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Espacio Local (Desactivado)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                  Text('Datos guardados en este dispositivo', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, color: Colors.white54),
+                          ],
+                        ),
                       ),
                     ),
                   ),

@@ -83,6 +83,7 @@ class SyncService {
           humidity: Value(j['humidity'] != null ? (j['humidity'] as num).toDouble() : null),
           habitatDescription: Value(j['habitatDescription'] as String?),
           habitatPhotoUrl: Value(j['habitatPhotoUrl'] as String?),
+          routeId: Value(j['routeId'] as String?),
         ));
       }
 
@@ -116,6 +117,7 @@ class SyncService {
     double? temperature,
     double? humidity,
     String? habitatDescription,
+    String? routeId,
   }) async {
     final id = const Uuid().v4();
     final now = DateTime.now();
@@ -138,6 +140,7 @@ class SyncService {
       temperature: Value(temperature),
       humidity: Value(humidity),
       habitatDescription: Value(habitatDescription),
+      routeId: Value(routeId),
     ));
 
     await _db.enqueue(SyncQueueCompanion(
@@ -160,6 +163,7 @@ class SyncService {
         'temperature': temperature,
         'humidity': humidity,
         'habitatDescription': habitatDescription,
+        'routeId': routeId,
       })),
       createdAt: Value(now),
     ));
@@ -190,6 +194,7 @@ class SyncService {
           'temperature': obs.temperature,
           'humidity': obs.humidity,
           'habitatDescription': obs.habitatDescription,
+          'routeId': obs.routeId,
         })),
         createdAt: Value(now),
       ));
@@ -200,6 +205,7 @@ class SyncService {
 
   // Guarda ruta local y encola para sync
   Future<void> saveRouteOffline({
+    String? id,
     required String projectId,
     required String name,
     required DateTime startedAt,
@@ -207,10 +213,10 @@ class SyncService {
     double distanceMeters = 0,
     String? trackPointsJson,
   }) async {
-    final id = const Uuid().v4();
+    final routeId = id ?? const Uuid().v4();
 
     await _db.upsertRoute(LocalRoutesCompanion(
-      id: Value(id),
+      id: Value(routeId),
       projectId: Value(projectId),
       name: Value(name),
       startedAt: Value(startedAt),
@@ -221,7 +227,7 @@ class SyncService {
 
     await _db.enqueue(SyncQueueCompanion(
       entityType: const Value('route'),
-      entityId: Value(id),
+      entityId: Value(routeId),
       operation: const Value('create'),
       payload: Value(jsonEncode({
         'projectId': projectId,

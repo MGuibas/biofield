@@ -1,0 +1,6 @@
+{
+  "name": "Expedición 3D",
+  "description": "Explora rutas en 3D con animaciones de cámara fluidas y terreno realista.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

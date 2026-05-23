@@ -178,6 +178,7 @@ class RouteModel {
   final DateTime? endedAt;
   final double distanceMeters;
   final String? trackPointsJson;
+  final String? notes;
 
   RouteModel({
     required this.id,
@@ -187,6 +188,7 @@ class RouteModel {
     this.endedAt,
     required this.distanceMeters,
     this.trackPointsJson,
+    this.notes,
   });
 
   factory RouteModel.fromJson(Map<String, dynamic> j) => RouteModel(
@@ -197,6 +199,7 @@ class RouteModel {
         endedAt: j['endedAt'] != null ? DateTime.parse(j['endedAt']) : null,
         distanceMeters: (j['distanceMeters'] as num).toDouble(),
         trackPointsJson: j['trackPointsJson'],
+        notes: j['notes'],
       );
 }
 

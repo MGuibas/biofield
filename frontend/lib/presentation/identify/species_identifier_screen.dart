@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/gemini_service.dart';
 import '../../core/services/plantnet_service.dart';
@@ -60,6 +61,16 @@ class _SpeciesIdentifierScreenState extends State<SpeciesIdentifierScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              context.go('/projects');
+            }
+          },
+        ),
         title: const Text('Identificar especie'),
         centerTitle: true,
       ),

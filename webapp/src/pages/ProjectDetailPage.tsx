@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api, { photoUrl, getAvatarUrl } from '../api'
 import type { ProjectDetail, Observation, Route, Note, ActivityItem, Comment, ProjectStats } from '../types'
 import ProjectMap from '../components/ProjectMap'
+import Route3DModal from '../components/Route3DModal'
 import Navbar from '../components/Navbar'
 import Modal from '../components/Modal'
 import StatsTab from '../components/StatsTab'
@@ -217,37 +218,196 @@ function ObsModal({ obs, onClose }: { obs: Observation; onClose: () => void }) {
   )
 }
 
-function RouteModal({ route, obsInRoute, onClose }: { route: Route; obsInRoute: Observation[]; onClose: () => void }) {
+function calculateDistanceMeters(points: { lat: number; lon: number }[]): number {
+  let dist = 0
+  const R = 6371000 // Earth radius in meters
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const dLat = ((p2.lat - p1.lat) * Math.PI) / 180
+    const dLon = ((p2.lon - p1.lon) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((p1.lat * Math.PI) / 180) *
+        Math.cos((p2.lat * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    dist += R * c
+  }
+  return dist
+}
+
+function RouteModal({
+  route,
+  obsInRoute,
+  onClose,
+  onObsClick,
+  onRefresh
+}: {
+  route: Route
+  obsInRoute: Observation[]
+  onClose: () => void
+  onObsClick?: (obs: Observation) => void
+  onRefresh?: () => void
+}) {
   const [selObs, setSelObs] = useState<Observation | null>(null)
+  const [showFlight3D, setShowFlight3D] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedRoute, setEditedRoute] = useState<Route | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditedRoute(route)
+    } else {
+      setEditedRoute(null)
+    }
+    setErrorMsg(null)
+  }, [isEditing, route])
+
+  const handleRoutePointsChange = (newPoints: { lat: number; lon: number }[]) => {
+    const distance = calculateDistanceMeters(newPoints)
+    setEditedRoute(prev => {
+      if (!prev) return null
+      return {
+        ...prev,
+        distanceMeters: distance,
+        trackPointsJson: JSON.stringify(newPoints)
+      }
+    })
+  }
+
+  const handleSave = async () => {
+    if (!editedRoute) return
+    if (!editedRoute.name.trim()) {
+      setErrorMsg('El nombre de la ruta no puede estar vacío.')
+      return
+    }
+    setSaving(true)
+    setErrorMsg(null)
+    try {
+      await api.put(`/routes/${route.id}`, {
+        name: editedRoute.name,
+        endedAt: editedRoute.endedAt,
+        distanceMeters: editedRoute.distanceMeters,
+        trackPointsJson: editedRoute.trackPointsJson,
+        notes: editedRoute.notes
+      })
+      setIsEditing(false)
+      onRefresh?.()
+    } catch (err: any) {
+      console.error(err)
+      setErrorMsg(err.response?.data?.message || 'Error al guardar los cambios de la ruta.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm('¿Seguro que quieres eliminar esta ruta? Las observaciones asociadas no se borrarán, pero dejarán de estar vinculadas.')) {
+      return
+    }
+    setDeleting(true)
+    setErrorMsg(null)
+    try {
+      await api.delete(`/routes/${route.id}`)
+      onClose()
+      onRefresh?.()
+    } catch (err: any) {
+      console.error(err)
+      setErrorMsg(err.response?.data?.message || 'Error al eliminar la ruta.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const dur = duration(route.startedAt, route.endedAt)
 
   return (
     <>
       <Modal title={`Detalle de Ruta`} onClose={onClose} maxWidth={860}>
         {/* Banner */}
-        <div style={{
-          background: 'linear-gradient(135deg, #1565c0 0%, #1e88e5 100%)',
-          padding: '18px 20px',
-          color: '#fff',
-          borderRadius: 12,
-          marginBottom: 20,
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          <div style={{ position: 'absolute', width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', top: -40, right: -20 }} />
-          <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>📍 {route.name}</h3>
-          <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>📅 {new Date(route.startedAt).toLocaleString()}</span>
-            {route.endedAt && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>🏁 Fin: {new Date(route.endedAt).toLocaleString()}</span>}
+        {isEditing ? (
+          <div style={{
+            background: 'linear-gradient(135deg, #1e88e5 0%, #1565c0 100%)',
+            padding: '18px 20px',
+            color: '#fff',
+            borderRadius: 12,
+            marginBottom: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12
+          }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>✏️ Editar Detalles de Ruta</h3>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>NOMBRE DE LA RUTA</label>
+              <input 
+                type="text" 
+                value={editedRoute?.name || ''} 
+                onChange={e => setEditedRoute(prev => prev ? { ...prev, name: e.target.value } : null)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  outline: 'none'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>NOTAS / DESCRIPCIÓN</label>
+              <textarea 
+                value={editedRoute?.notes || ''} 
+                onChange={e => setEditedRoute(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  fontSize: 13,
+                  minHeight: 60,
+                  maxHeight: 120,
+                  resize: 'vertical',
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{
+            background: 'linear-gradient(135deg, #1565c0 0%, #1e88e5 100%)',
+            padding: '18px 20px',
+            color: '#fff',
+            borderRadius: 12,
+            marginBottom: 20,
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ position: 'absolute', width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', top: -40, right: -20 }} />
+            <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>📍 {route.name}</h3>
+            <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>📅 {new Date(route.startedAt).toLocaleString()}</span>
+              {route.endedAt && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>🏁 Fin: {new Date(route.endedAt).toLocaleString()}</span>}
+            </div>
+          </div>
+        )}
 
         {/* Route Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
           <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
             <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>DISTANCIA RECORRIDA</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 2, display: 'block' }}>
-              📏 {(route.distanceMeters / 1000).toFixed(2)} km
+              📏 {(((isEditing && editedRoute) ? editedRoute.distanceMeters : route.distanceMeters) / 1000).toFixed(2)} km
             </span>
           </div>
           {dur && (
@@ -266,7 +426,7 @@ function RouteModal({ route, obsInRoute, onClose }: { route: Route; obsInRoute: 
           </div>
         </div>
 
-        {route.notes && (
+        {!isEditing && route.notes && (
           <div style={{ marginBottom: 20 }}>
             <p className="section-title">Notas de Ruta</p>
             <p style={{ fontSize: 14, background: 'var(--bg)', padding: '12px 16px', borderRadius: 10, color: 'var(--text)', lineHeight: 1.6, borderLeft: '3px solid #1565c0' }}>
@@ -275,10 +435,149 @@ function RouteModal({ route, obsInRoute, onClose }: { route: Route; obsInRoute: 
           </div>
         )}
 
-        <p className="section-title">Mapa de Recorrido</p>
-        <div style={{ marginBottom: 20, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <ProjectMap observations={obsInRoute} routes={[route]} height={340} />
+        {errorMsg && (
+          <div style={{ background: '#ffebee', color: '#c62828', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, marginBottom: 14 }}>
+            ⚠️ {errorMsg}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <p className="section-title" style={{ margin: 0 }}>
+            {isEditing ? 'Mapeo Interactivo de Recorrido' : 'Mapa de Recorrido'}
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {!isEditing && (
+              <>
+                <button 
+                  onClick={() => setShowFlight3D(true)}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: '#1565c0',
+                    borderRadius: '8px'
+                  }}
+                >
+                  🚀 Iniciar Vuelo 3D
+                </button>
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: '#2e7d32',
+                    borderRadius: '8px'
+                  }}
+                >
+                  ✏️ Editar Puntos
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="btn-danger"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: '#d32f2f',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: deleting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {deleting ? '🗑️ Eliminando...' : '🗑️ Eliminar'}
+                </button>
+              </>
+            )}
+            {isEditing && (
+              <>
+                <button 
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: '#2e7d32',
+                    borderRadius: '8px',
+                    cursor: saving ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {saving ? '💾 Guardando...' : '💾 Guardar Cambios'}
+                </button>
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: '#757575',
+                    borderRadius: '8px'
+                  }}
+                >
+                  ❌ Cancelar
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {isEditing && (
+          <div style={{
+            background: 'rgba(59, 130, 246, 0.08)',
+            borderLeft: '4px solid #3b82f6',
+            color: '#1e3a8a',
+            padding: '10px 14px',
+            borderRadius: '6px',
+            fontSize: '12.5px',
+            marginBottom: 12,
+            fontWeight: 500
+          }}>
+            ℹ️ <b>Modo Edición Activo:</b> Puedes hacer clic y arrastrar los puntos azules del recorrido en el mapa para modificar la ruta. La distancia se recalculará automáticamente.
+          </div>
+        )}
+
+        <div style={{ marginBottom: 20, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <ProjectMap 
+            observations={obsInRoute} 
+            routes={isEditing && editedRoute ? [editedRoute] : [route]} 
+            height={340} 
+            isRouteEditMode={isEditing}
+            onRoutePointsChange={handleRoutePointsChange}
+          />
+        </div>
+
+        {showFlight3D && (
+          <Route3DModal
+            route={route}
+            obsInRoute={obsInRoute}
+            onClose={() => setShowFlight3D(false)}
+            onObsClick={(obs) => {
+              onObsClick?.(obs);
+            }}
+          />
+        )}
 
         {obsInRoute.length > 0 && (
           <div style={{ marginTop: 20 }}>
@@ -404,6 +703,26 @@ export default function ProjectDetailPage() {
       // Revert position by refetching observations from backend
       api.get(`/projects/${id}/observations`, { params: { page: 1, pageSize: 200 } })
         .then(o => setObs(o.data.items ?? []))
+    }
+  }
+
+  const refreshRoutes = async () => {
+    if (!id) return
+    try {
+      const [r, o, s] = await Promise.all([
+        api.get(`/projects/${id}/routes`),
+        api.get(`/projects/${id}/observations`, { params: { page: 1, pageSize: 200 } }),
+        api.get(`/projects/${id}/observations/stats`).catch(() => null)
+      ])
+      setRoutes(r.data)
+      setObs(o.data.items ?? [])
+      if (s) setStats(s.data)
+      if (selRoute) {
+        const updated = r.data.find((x: Route) => x.id === selRoute.id)
+        if (updated) setSelRoute(updated)
+      }
+    } catch (err) {
+      console.error('Error refreshing project routes/obs:', err)
     }
   }
 
@@ -831,8 +1150,25 @@ export default function ProjectDetailPage() {
                   <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Se unió: {new Date(m.joinedAt).toLocaleDateString()}</p>
                 </div>
                 
-                <span className={`badge ${m.role === 'owner' ? 'badge-green' : 'badge-grey'}`} style={{ textTransform: 'capitalize', fontSize: 10, fontWeight: 700 }}>
-                  {m.role === 'owner' ? 'Propietario' : 'Miembro'}
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: 20,
+                  textTransform: 'capitalize',
+                  ...(
+                    m.role === 'owner' ? { background: 'rgba(245,158,11,0.15)', color: '#b45309', border: '1px solid rgba(245,158,11,0.35)' } :
+                    m.role === 'editor' ? { background: 'rgba(37,99,235,0.12)', color: '#1d4ed8', border: '1px solid rgba(37,99,235,0.3)' } :
+                    m.role === 'viewer' ? { background: 'rgba(107,114,128,0.12)', color: '#4b5563', border: '1px solid rgba(107,114,128,0.3)' } :
+                    { background: 'rgba(107,114,128,0.12)', color: '#4b5563', border: '1px solid rgba(107,114,128,0.3)' }
+                  )
+                }}>
+                  {m.role === 'owner' ? '★ Propietario' :
+                   m.role === 'editor' ? '✏ Editor' :
+                   m.role === 'viewer' ? '👁 Visualizador' : '👤 Miembro'}
                 </span>
               </div>
             ))}
@@ -846,6 +1182,8 @@ export default function ProjectDetailPage() {
           route={selRoute}
           obsInRoute={obs.filter(o => o.routeId === selRoute.id)}
           onClose={() => setSelRoute(null)}
+          onObsClick={setSelObs}
+          onRefresh={refreshRoutes}
         />
       )}
 
