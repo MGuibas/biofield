@@ -64,6 +64,12 @@ using (var scope = app.Services.CreateScope())
 app.UseMiddleware<BioField.API.Middleware.ErrorHandlingMiddleware>();
 app.UseCors();
 app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
+    RequestPath = "/api"
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

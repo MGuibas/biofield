@@ -21,7 +21,9 @@ public class AdminController(AppDbContext db) : ControllerBase
                 Id = u.Id,
                 Email = u.Email,
                 DisplayName = u.DisplayName,
-                AvatarUrl = u.AvatarUrl,
+                AvatarUrl = u.AvatarUrl != null && !u.AvatarUrl.StartsWith("http") && u.AvatarUrl.StartsWith("/avatars/")
+                    ? "/api" + u.AvatarUrl
+                    : u.AvatarUrl,
                 Speciality = u.Speciality,
                 Institution = u.Institution,
                 Role = u.Role,
@@ -92,7 +94,7 @@ public class AdminController(AppDbContext db) : ControllerBase
                 Id = user.Id,
                 Email = user.Email,
                 DisplayName = user.DisplayName,
-                AvatarUrl = user.AvatarUrl,
+                AvatarUrl = user.GetNormalizedAvatarUrl(),
                 Speciality = user.Speciality,
                 Institution = user.Institution,
                 Role = user.Role,

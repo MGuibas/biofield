@@ -5,6 +5,10 @@ import api from '../api'
 import type { Project } from '../types'
 import Navbar from '../components/Navbar'
 import Modal from '../components/Modal'
+import { 
+  FolderOpen, CheckCircle2, Archive, Users, Search, 
+  Plus, Link as LinkIcon, Crown, Copy, Check, FolderSearch, AlertTriangle 
+} from 'lucide-react'
 
 export default function ProjectsPage() {
   const { user } = useAuth()
@@ -129,76 +133,72 @@ export default function ProjectsPage() {
 
         {/* Global Stats Dashboard */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
-          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)' }}>
             <div style={{
-              width: 46,
-              height: 46,
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.12) 0%, rgba(46, 125, 50, 0.04) 100%)',
+              width: 42,
+              height: 42,
+              borderRadius: 'var(--radius)',
+              background: 'var(--green-light)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 20,
               color: 'var(--green)',
               flexShrink: 0
-            }}>🌿</div>
+            }}><FolderOpen size={20} /></div>
             <div>
               <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{totalProjects}</p>
               <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 1 }}>Proyectos Totales</p>
             </div>
           </div>
 
-          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)' }}>
             <div style={{
-              width: 46,
-              height: 46,
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.12) 0%, rgba(76, 175, 80, 0.04) 100%)',
+              width: 42,
+              height: 42,
+              borderRadius: 'var(--radius)',
+              background: 'var(--green-light)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 20,
               color: 'var(--green-mid)',
               flexShrink: 0
-            }}>✔️</div>
+            }}><CheckCircle2 size={20} /></div>
             <div>
               <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{activeProjects}</p>
               <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 1 }}>Proyectos Activos</p>
             </div>
           </div>
 
-          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)' }}>
             <div style={{
-              width: 46,
-              height: 46,
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, rgba(107, 114, 128, 0.12) 0%, rgba(107, 114, 128, 0.04) 100%)',
+              width: 42,
+              height: 42,
+              borderRadius: 'var(--radius)',
+              background: '#f3f4f6',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 20,
               color: 'var(--muted)',
               flexShrink: 0
-            }}>📁</div>
+            }}><Archive size={20} /></div>
             <div>
               <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{archivedProjects}</p>
               <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 1 }}>Archivados</p>
             </div>
           </div>
 
-          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+          <div className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)' }}>
             <div style={{
-              width: 46,
-              height: 46,
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, rgba(21, 101, 192, 0.12) 0%, rgba(21, 101, 192, 0.04) 100%)',
+              width: 42,
+              height: 42,
+              borderRadius: 'var(--radius)',
+              background: '#e3f2fd',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 20,
               color: '#1565c0',
               flexShrink: 0
-            }}>👥</div>
+            }}><Users size={20} /></div>
             <div>
               <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{colabProjects}</p>
               <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 1 }}>Colaboraciones</p>
@@ -215,25 +215,25 @@ export default function ProjectsPage() {
           marginBottom: 24,
           flexWrap: 'wrap',
           background: 'var(--white)',
-          padding: '16px 20px',
-          borderRadius: '16px',
+          padding: '12px 16px',
+          borderRadius: 'var(--radius-lg)',
           boxShadow: 'var(--shadow)',
           border: '1px solid var(--border)'
         }}>
           {/* Search box */}
           <div style={{ position: 'relative', flex: '1 1 300px' }}>
-            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 16 }}>🔍</span>
+            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex', alignItems: 'center' }}><Search size={16} /></span>
             <input
               type="text"
               placeholder="Buscar por nombre, descripción o código..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: 40, height: 42 }}
+              style={{ paddingLeft: 40, height: 40 }}
             />
           </div>
 
           {/* Filter Toggle */}
-          <div style={{ display: 'flex', gap: 6, background: 'var(--bg)', padding: 4, borderRadius: 10 }}>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--bg)', padding: 3, borderRadius: 'var(--radius)' }}>
             {(['all', 'active', 'archived'] as const).map(f => (
               <button
                 key={f}
@@ -244,8 +244,8 @@ export default function ProjectsPage() {
                   fontWeight: 600,
                   background: filter === f ? 'var(--white)' : 'transparent',
                   color: filter === f ? 'var(--green)' : 'var(--muted)',
-                  boxShadow: filter === f ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  borderRadius: 8,
+                  boxShadow: filter === f ? 'var(--shadow)' : 'none',
+                  borderRadius: 'var(--radius)',
                   transition: 'all 0.15s ease'
                 }}
               >
@@ -259,16 +259,16 @@ export default function ProjectsPage() {
             <button 
               className="btn-outline" 
               onClick={() => setShowJoinModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 18px', fontWeight: 600 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', fontWeight: 600 }}
             >
-              <span>🔗</span> Unirse a Proyecto
+              <LinkIcon size={14} /> Unirse a Proyecto
             </button>
             <button 
               className="btn-primary" 
               onClick={() => setShowCreateModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 18px', fontWeight: 600 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', fontWeight: 600 }}
             >
-              <span>➕</span> Crear Proyecto
+              <Plus size={14} /> Crear Proyecto
             </button>
           </div>
         </div>
@@ -280,31 +280,34 @@ export default function ProjectsPage() {
               <div 
                 key={p.id} 
                 className="card card-hover" 
-                style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--border)' }} 
+                style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }} 
                 onClick={() => nav(`/projects/${p.id}`)}
               >
                 {/* Visual Header Banner */}
                 <div style={{
-                  height: 80,
+                  height: 70,
                   background: p.isArchived 
                     ? 'linear-gradient(135deg, #78909c 0%, #37474f 100%)'
                     : 'linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%)',
                   position: 'relative',
-                  borderRadius: '12px 12px 0 0',
+                  borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
                   padding: '0 16px'
                 }}>
                   {/* Decorative backgrounds */}
-                  <div style={{ position: 'absolute', width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', top: -30, right: -20 }} />
-                  <div style={{ position: 'absolute', width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', bottom: -10, right: 40 }} />
+                  <div style={{ position: 'absolute', width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', top: -30, right: -20 }} />
                   
                   {/* Role Badge */}
                   {user?.userId === p.ownerId ? (
-                    <span className="badge" style={{ backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#fff', fontSize: 11, fontWeight: 700 }}>👑 Propietario</span>
+                    <span className="badge" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 'var(--radius)', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px' }}>
+                      <Crown size={11} /> Propietario
+                    </span>
                   ) : (
-                    <span className="badge" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#fff', fontSize: 11, fontWeight: 700 }}>👥 Colaborador</span>
+                    <span className="badge" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 'var(--radius)', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px' }}>
+                      <Users size={11} /> Colaborador
+                    </span>
                   )}
 
                   {/* Status Badge */}
@@ -313,7 +316,9 @@ export default function ProjectsPage() {
                     backgroundColor: p.isArchived ? 'rgba(0,0,0,0.3)' : 'rgba(255, 255, 255, 0.9)',
                     color: p.isArchived ? '#fff' : 'var(--green-dark)',
                     fontSize: 11,
-                    fontWeight: 700
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius)',
+                    padding: '3px 8px'
                   }}>
                     {p.isArchived ? 'Archivado' : 'Activo'}
                   </span>
@@ -321,7 +326,7 @@ export default function ProjectsPage() {
 
                 {/* Card Body */}
                 <div style={{ padding: 20 }}>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</h3>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</h3>
                   
                   <p style={{
                     fontSize: 13,
@@ -339,7 +344,7 @@ export default function ProjectsPage() {
                   </p>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: 'var(--muted)', borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>👥 {p.memberCount} {p.memberCount === 1 ? 'miembro' : 'miembros'}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}><Users size={14} /> {p.memberCount} {p.memberCount === 1 ? 'miembro' : 'miembros'}</span>
                     
                     <div 
                       onClick={(e) => handleCopyCode(e, p.shareCode)}
@@ -347,22 +352,22 @@ export default function ProjectsPage() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: 5,
                         fontFamily: 'monospace',
                         background: 'var(--bg)',
                         border: '1px solid var(--border)',
-                        padding: '4px 10px',
-                        borderRadius: 6,
+                        padding: '4px 8px',
+                        borderRadius: 'var(--radius)',
                         cursor: 'pointer',
                         fontSize: 12,
                         fontWeight: 600,
                         color: copiedCode === p.shareCode ? 'var(--green)' : 'var(--text)',
                         transition: 'all 0.2s ease',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        boxShadow: 'var(--shadow)'
                       }}
                     >
                       <span>{p.shareCode}</span>
-                      <span>{copiedCode === p.shareCode ? '✅' : '📋'}</span>
+                      {copiedCode === p.shareCode ? <Check size={12} /> : <Copy size={12} />}
                     </div>
                   </div>
                 </div>
@@ -370,10 +375,10 @@ export default function ProjectsPage() {
             ))}
 
             {filteredProjects.length === 0 && (
-              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px 40px', color: 'var(--muted)' }}>
-                <p style={{ fontSize: 48, marginBottom: 12 }}>🌱</p>
-                <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No se encontraron proyectos</h3>
-                <p style={{ fontSize: 14 }}>Intenta ajustar tu búsqueda o crea un proyecto nuevo para comenzar a recolectar observaciones.</p>
+              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px 40px', color: 'var(--muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <FolderSearch size={40} color="var(--muted)" style={{ marginBottom: 12 }} />
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No se encontraron proyectos</h3>
+                <p style={{ fontSize: 13 }}>Intenta ajustar tu búsqueda o crea un proyecto nuevo para comenzar a recolectar observaciones.</p>
               </div>
             )}
           </div>
@@ -385,8 +390,8 @@ export default function ProjectsPage() {
         <Modal title="Crear Nuevo Proyecto" onClose={() => setShowCreateModal(false)} maxWidth={500}>
           <form onSubmit={handleCreateProject} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {createError && (
-              <div style={{ padding: '10px 14px', background: '#ffebee', color: '#c62828', borderRadius: 8, fontSize: 13, fontWeight: 500 }}>
-                ⚠️ {createError}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: '#ffebee', color: '#c62828', borderRadius: 'var(--radius)', fontSize: 13, fontWeight: 500 }}>
+                <AlertTriangle size={15} /> {createError}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -426,8 +431,8 @@ export default function ProjectsPage() {
         <Modal title="Unirse a un Proyecto" onClose={() => setShowJoinModal(false)} maxWidth={460}>
           <form onSubmit={handleJoinProject} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {joinError && (
-              <div style={{ padding: '10px 14px', background: '#ffebee', color: '#c62828', borderRadius: 8, fontSize: 13, fontWeight: 500 }}>
-                ⚠️ {joinError}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: '#ffebee', color: '#c62828', borderRadius: 'var(--radius)', fontSize: 13, fontWeight: 500 }}>
+                <AlertTriangle size={15} /> {joinError}
               </div>
             )}
             <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>

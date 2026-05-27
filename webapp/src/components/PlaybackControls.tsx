@@ -25,15 +25,14 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
       transform: 'translateX(-50%)',
       width: '90%',
       maxWidth: '600px',
-      backgroundColor: 'rgba(24, 24, 27, 0.92)',
+      backgroundColor: 'var(--playback-bg)',
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
-      borderRadius: '20px',
+      borderRadius: 'var(--radius-lg)',
       padding: '20px 24px',
-      border: '1px solid rgba(63, 63, 70, 0.5)',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
-      zIndex: 20,
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      border: '1px solid var(--border)',
+      boxShadow: 'var(--shadow-lg)',
+      zIndex: 20
     }}>
       
       {/* Stats Panel */}
@@ -44,15 +43,15 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
         marginBottom: '20px'
       }}>
         <div style={{
-          backgroundColor: 'rgba(39, 39, 42, 0.7)',
-          borderRadius: '12px',
+          backgroundColor: 'var(--green-light)',
+          borderRadius: 'var(--radius)',
           padding: '12px',
           textAlign: 'center',
-          border: '1px solid rgba(63, 63, 70, 0.3)'
+          border: '1px solid rgba(46, 125, 50, 0.08)'
         }}>
           <p style={{
             fontSize: '11px',
-            color: '#a1a1aa',
+            color: 'var(--muted)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             margin: '0 0 4px 0',
@@ -61,22 +60,22 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
           <p style={{
             fontSize: '20px',
             fontWeight: 'bold',
-            color: '#ffffff',
+            color: 'var(--text)',
             margin: 0,
             fontFamily: 'monospace'
           }}>{stats.distance}</p>
         </div>
         
         <div style={{
-          backgroundColor: 'rgba(39, 39, 42, 0.7)',
-          borderRadius: '12px',
+          backgroundColor: 'var(--green-light)',
+          borderRadius: 'var(--radius)',
           padding: '12px',
           textAlign: 'center',
-          border: '1px solid rgba(63, 63, 70, 0.3)'
+          border: '1px solid rgba(46, 125, 50, 0.08)'
         }}>
           <p style={{
             fontSize: '11px',
-            color: '#a1a1aa',
+            color: 'var(--muted)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             margin: '0 0 4px 0',
@@ -85,7 +84,7 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
           <p style={{
             fontSize: '20px',
             fontWeight: 'bold',
-            color: '#ffffff',
+            color: 'var(--text)',
             margin: 0,
             fontFamily: 'monospace'
           }}>{stats.speed}</p>
@@ -96,14 +95,14 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
       <div style={{ marginBottom: '20px' }}>
         <div style={{
           height: '8px',
-          backgroundColor: 'rgba(63, 63, 70, 0.5)',
+          backgroundColor: 'var(--border)',
           borderRadius: '9999px',
           overflow: 'hidden'
         }}>
           <div 
             style={{
               height: '100%',
-              backgroundColor: '#4caf50', // Use Biofield green
+              backgroundColor: 'var(--green)', // Use Biofield green
               borderRadius: '9999px',
               width: `${progress}%`,
               transition: 'width 0.30s linear'
@@ -125,8 +124,8 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
           onMouseLeave={() => setHoverReset(false)}
           style={{
             padding: '12px',
-            color: hoverReset ? '#ffffff' : '#a1a1aa',
-            backgroundColor: hoverReset ? 'rgba(63, 63, 70, 0.5)' : 'transparent',
+            color: hoverReset ? 'var(--green)' : 'var(--muted)',
+            backgroundColor: hoverReset ? 'var(--green-light)' : 'transparent',
             borderRadius: '9999px',
             cursor: 'pointer',
             transition: 'all 0.2s',
@@ -151,7 +150,7 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: hoverPlay ? '#43a047' : '#4caf50', // Green buttons
+            backgroundColor: hoverPlay ? 'var(--green-dark)' : 'var(--green)',
             color: '#ffffff',
             borderRadius: '9999px',
             cursor: 'pointer',
@@ -159,7 +158,7 @@ export default function PlaybackControls({ isPlaying, progress, stats, onPlayPau
             outline: 'none',
             transition: 'all 0.2s',
             transform: hoverPlay ? 'scale(1.05)' : 'scale(1)',
-            boxShadow: '0 10px 15px -3px rgba(76, 175, 80, 0.3)'
+            boxShadow: '0 10px 15px -3px rgba(46, 125, 50, 0.3)'
           }}
         >
           {isPlaying ? (

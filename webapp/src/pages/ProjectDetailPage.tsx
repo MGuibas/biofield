@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import api, { photoUrl, getAvatarUrl } from '../api'
 import type { ProjectDetail, Observation, Route, Note, ActivityItem, Comment, ProjectStats } from '../types'
 import ProjectMap from '../components/ProjectMap'
@@ -7,12 +7,47 @@ import Route3DModal from '../components/Route3DModal'
 import Navbar from '../components/Navbar'
 import Modal from '../components/Modal'
 import StatsTab from '../components/StatsTab'
+import { 
+  Map as MapIcon, Search, Compass, FileText, BarChart3, Activity, Users, 
+  Crown, Check, Edit2, Eye, Calendar, Clock, Ruler, X, Shield,
+  MapPin, Mountain, Hash, CloudSun, Thermometer, Droplets, Tag
+} from 'lucide-react'
 
-const TABS = ['🗺 Mapa', '🔬 Observaciones', '📍 Rutas', '📝 Notas', '📊 Stats', '⚡ Actividad', '👥 Miembros']
+const TABS = [
+  { label: 'Mapa', icon: 'map' },
+  { label: 'Observaciones', icon: 'search' },
+  { label: 'Rutas', icon: 'compass' },
+  { label: 'Notas', icon: 'file-text' },
+  { label: 'Stats', icon: 'bar-chart' },
+  { label: 'Actividad', icon: 'activity' },
+  { label: 'Miembros', icon: 'users' },
+]
 
 function parseList(json?: string): string[] {
   if (!json) return []
   try { return JSON.parse(json) } catch { return [] }
+}
+
+function Avatar({ url, name, className = "avatar", style }: { url?: string | null; name: string; className?: string; style?: React.CSSProperties }) {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    setFailed(false)
+  }, [url])
+
+  return (
+    <div className={className} style={style}>
+      {url && !failed ? (
+        <img 
+          src={getAvatarUrl(url) ?? ''} 
+          alt="" 
+          referrerPolicy="no-referrer" 
+          onError={() => setFailed(true)} 
+        />
+      ) : (
+        name[0]?.toUpperCase() ?? '?'
+      )}
+    </div>
+  )
 }
 
 function relTime(iso: string) {
@@ -46,12 +81,33 @@ function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
   )
 }
 
-function ObsModal({ obs, onClose }: { obs: Observation; onClose: () => void }) {
+function ObsModal({ obs, onClose, zIndex, onUpdate }: { obs: Observation; onClose: () => void; zIndex?: number; onUpdate?: (updatedObs: Observation) => void }) {
   const [lightbox, setLightbox] = useState<string | null>(null)
+  const [failedPhotos, setFailedPhotos] = useState<Record<string, boolean>>({})
   const [comments, setComments] = useState<Comment[]>([])
   const [loadingComments, setLoadingComments] = useState(true)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Form states:
+  const [title, setTitle] = useState(obs.title ?? '')
+  const [taxonName, setTaxonName] = useState(obs.taxonName)
+  const [quantity, setQuantity] = useState(String(obs.quantity))
+  const [description, setDescription] = useState(obs.description ?? '')
+  const [notes, setNotes] = useState(obs.notes ?? '')
+  const [weatherCondition, setWeatherCondition] = useState(obs.weatherCondition ?? '')
+  const [temperature, setTemperature] = useState(obs.temperature != null ? String(obs.temperature) : '')
+  const [humidity, setHumidity] = useState(obs.humidity != null ? String(obs.humidity) : '')
+  const [habitatDescription, setHabitatDescription] = useState(obs.habitatDescription ?? '')
+  const [latitude, setLatitude] = useState(String(obs.latitude))
+  const [longitude, setLongitude] = useState(String(obs.longitude))
+  const [altitude, setAltitude] = useState(obs.altitude != null ? String(obs.altitude) : '')
+  const [tags, setTags] = useState(parseList(obs.tagsJson).join(', '))
+  const [observedAt, setObservedAt] = useState('')
+
   const photos = parseList(obs.photosJson)
-  const tags = parseList(obs.tagsJson)
+  const staticTags = parseList(obs.tagsJson)
 
   useEffect(() => {
     api.get(`/observations/${obs.id}/comments`)
@@ -59,158 +115,472 @@ function ObsModal({ obs, onClose }: { obs: Observation; onClose: () => void }) {
       .finally(() => setLoadingComments(false))
   }, [obs.id])
 
+  useEffect(() => {
+    setTitle(obs.title ?? '')
+    setTaxonName(obs.taxonName)
+    setQuantity(String(obs.quantity))
+    setDescription(obs.description ?? '')
+    setNotes(obs.notes ?? '')
+    setWeatherCondition(obs.weatherCondition ?? '')
+    setTemperature(obs.temperature != null ? String(obs.temperature) : '')
+    setHumidity(obs.humidity != null ? String(obs.humidity) : '')
+    setHabitatDescription(obs.habitatDescription ?? '')
+    setLatitude(String(obs.latitude))
+    setLongitude(String(obs.longitude))
+    setAltitude(obs.altitude != null ? String(obs.altitude) : '')
+    setTags(parseList(obs.tagsJson).join(', '))
+
+    try {
+      const d = new Date(obs.observedAt)
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 16);
+      setObservedAt(localISOTime);
+    } catch {
+      setObservedAt('');
+    }
+  }, [obs])
+
+  const handleSave = async () => {
+    if (!taxonName.trim()) {
+      alert("El nombre de la especie es obligatorio")
+      return
+    }
+    if (isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+      alert("Coordenadas no válidas")
+      return
+    }
+
+    try {
+      setSaving(true)
+      const parsedTags = tags
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+
+      const payload = {
+        routeId: obs.routeId,
+        taxonId: obs.taxonId,
+        taxonName,
+        title: title.trim() || null,
+        description: description.trim() || null,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        altitude: altitude.trim() ? parseFloat(altitude) : null,
+        observedAt: observedAt ? new Date(observedAt).toISOString() : obs.observedAt,
+        notes: notes.trim() || null,
+        quantity: parseInt(quantity) || 1,
+        tagsJson: JSON.stringify(parsedTags),
+        weatherCondition: weatherCondition.trim() || null,
+        temperature: temperature.trim() ? parseFloat(temperature) : null,
+        humidity: humidity.trim() ? parseFloat(humidity) : null,
+        habitatDescription: habitatDescription.trim() || null,
+        habitatPhotoUrl: obs.habitatPhotoUrl
+      }
+
+      const res = await api.put(`/observations/${obs.id}`, payload)
+      onUpdate?.(res.data)
+      setIsEditing(false)
+    } catch (err) {
+      console.error(err)
+      alert("Error al guardar cambios de la observación")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
-      <Modal title={`Detalle de Observación`} onClose={onClose}>
-        {/* Banner with taxon name */}
+      <Modal title={`Detalle de Observación`} onClose={onClose} zIndex={zIndex}>
+        {/* Banner con gradiente e interruptor de edición */}
         <div style={{
           background: 'linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%)',
           padding: '18px 20px',
           color: '#fff',
-          borderRadius: 12,
+          borderRadius: 'var(--radius-lg)',
           marginBottom: 20,
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
           <div style={{ position: 'absolute', width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', top: -40, right: -20 }} />
-          <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{obs.title ?? obs.taxonName}</h3>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontStyle: 'italic', margin: '4px 0 0 0' }}>{obs.taxonName}</p>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{obs.title ?? obs.taxonName}</h3>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontStyle: 'italic', margin: '4px 0 0 0' }}>{obs.taxonName}</p>
+          </div>
+          <button 
+            onClick={() => setIsEditing(!isEditing)}
+            className="btn-primary"
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              padding: '6px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              backgroundColor: isEditing ? '#757575' : 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px',
+              color: '#fff',
+              cursor: 'pointer'
+            }}
+          >
+            {isEditing ? 'Cancelar' : '✏️ Editar'}
+          </button>
         </div>
 
-        {photos.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <p className="section-title">Fotos ({photos.length})</p>
-            <div className="photo-grid">
-              {photos.map((p, i) => (
-                <div key={i} className="photo-thumb" style={{ borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--shadow)' }} onClick={() => setLightbox(photoUrl(p) ?? '')}>
-                  <img src={photoUrl(p) ?? ''} alt="" />
-                </div>
-              ))}
+        {isEditing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>TÍTULO DE OBSERVACIÓN</label>
+                <input 
+                  type="text" 
+                  value={title} 
+                  onChange={e => setTitle(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>ESPECIE (NOMBRE TAXONÓMICO) *</label>
+                <input 
+                  type="text" 
+                  value={taxonName} 
+                  onChange={e => setTaxonName(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>DESCRIPCIÓN</label>
+              <textarea 
+                value={description} 
+                onChange={e => setDescription(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', minHeight: 60, fontFamily: 'inherit' }}
+              />
+            </div>
+
+            <p className="section-title">Información de Campo</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>FECHA Y HORA *</label>
+                <input 
+                  type="datetime-local" 
+                  value={observedAt} 
+                  onChange={e => setObservedAt(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>CANTIDAD</label>
+                <input 
+                  type="number" 
+                  value={quantity} 
+                  onChange={e => setQuantity(e.target.value)}
+                  min={1}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>LATITUD *</label>
+                <input 
+                  type="number" 
+                  step="any"
+                  value={latitude} 
+                  onChange={e => setLatitude(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>LONGITUD *</label>
+                <input 
+                  type="number" 
+                  step="any"
+                  value={longitude} 
+                  onChange={e => setLongitude(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>ALTITUD (METROS)</label>
+                <input 
+                  type="number" 
+                  value={altitude} 
+                  onChange={e => setAltitude(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+
+            <p className="section-title">Meteorología y Clima</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>CONDICIÓN CLIMÁTICA</label>
+                <input 
+                  type="text" 
+                  value={weatherCondition} 
+                  placeholder="Soleado, lluvioso, etc..."
+                  onChange={e => setWeatherCondition(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>TEMPERATURA (°C)</label>
+                <input 
+                  type="number" 
+                  step="any"
+                  value={temperature} 
+                  onChange={e => setTemperature(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>HUMEDAD (%)</label>
+                <input 
+                  type="number" 
+                  value={humidity} 
+                  onChange={e => setHumidity(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+
+            <p className="section-title">Hábitat y Notas</p>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>DESCRIPCIÓN DEL HÁBITAT</label>
+              <textarea 
+                value={habitatDescription} 
+                onChange={e => setHabitatDescription(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', minHeight: 50, fontFamily: 'inherit' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>NOTAS ADICIONALES DEL OBSERVADOR</label>
+              <textarea 
+                value={notes} 
+                onChange={e => setNotes(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', minHeight: 60, fontFamily: 'inherit' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>ETIQUETAS (SEPARADAS POR COMAS)</label>
+              <input 
+                type="text" 
+                value={tags} 
+                placeholder="ave, migratorio, bosque"
+                onChange={e => setTags(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+              <button 
+                onClick={handleSave} 
+                disabled={saving} 
+                className="btn-primary" 
+                style={{ flex: 1, padding: '10px 16px', fontWeight: 600, background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+              >
+                {saving ? 'Guardando...' : '💾 Guardar Cambios'}
+              </button>
+              <button 
+                onClick={() => setIsEditing(false)} 
+                className="btn-outline" 
+                style={{ flex: 1, padding: '10px 16px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
             </div>
           </div>
-        )}
-
-        {obs.description && (
-          <div style={{ marginBottom: 20 }}>
-            <p className="section-title">Descripción</p>
-            <p style={{ fontSize: 14, color: 'var(--text)', background: 'var(--bg)', padding: '12px 16px', borderRadius: 10, lineHeight: 1.6, borderLeft: '3px solid var(--green)' }}>
-              {obs.description}
-            </p>
-          </div>
-        )}
-
-        {/* Observation Data Grid */}
-        <p className="section-title">Información de Campo</p>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 12,
-          marginBottom: 20
-        }}>
-          <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>FECHA Y HORA</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 2, display: 'block' }}>
-              📅 {new Date(obs.observedAt).toLocaleString()}
-            </span>
-          </div>
-          <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>UBICACIÓN (LAT, LNG)</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 2, display: 'block' }}>
-              📍 {obs.latitude.toFixed(5)}, {obs.longitude.toFixed(5)}
-            </span>
-          </div>
-          {obs.altitude != null && (
-            <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
-              <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>ALTITUD</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 2, display: 'block' }}>
-                ⛰️ {obs.altitude.toFixed(0)} m
-              </span>
-            </div>
-          )}
-          <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>CANTIDAD INDIVIDUOS</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 2, display: 'block' }}>
-              🔢 × {obs.quantity}
-            </span>
-          </div>
-          {obs.weatherCondition && (
-            <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
-              <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>CLIMA</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 2, display: 'block' }}>
-                🌤️ {obs.weatherCondition}
-              </span>
-            </div>
-          )}
-          {(obs.temperature != null || obs.humidity != null) && (
-            <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
-              <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>METEOROLOGÍA</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 2, display: 'block' }}>
-                {obs.temperature != null ? `🌡️ ${obs.temperature}°C` : ''} {obs.humidity != null ? `💧 ${obs.humidity}%` : ''}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {obs.notes && (
-          <div style={{ marginBottom: 20 }}>
-            <p className="section-title">Notas de Observador</p>
-            <p style={{ fontSize: 14, background: '#fff9c4', color: '#5d4037', padding: '12px 16px', borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.6, borderLeft: '3px solid #fbc02d', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              {obs.notes}
-            </p>
-          </div>
-        )}
-
-        {(obs.habitatDescription || obs.habitatPhotoUrl) && (
-          <div style={{ marginBottom: 20 }}>
-            <p className="section-title">Hábitat</p>
-            <div className="card" style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: 14, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {obs.habitatDescription && (
-                <p style={{ fontSize: 14, margin: 0, lineHeight: 1.6 }}>{obs.habitatDescription}</p>
-              )}
-              {obs.habitatPhotoUrl && (
-                <div 
-                  className="photo-thumb" 
-                  style={{ width: 140, height: 140, borderRadius: 8, overflow: 'hidden', boxShadow: 'var(--shadow)' }} 
-                  onClick={() => setLightbox(photoUrl(obs.habitatPhotoUrl) ?? '')}
-                >
-                  <img src={photoUrl(obs.habitatPhotoUrl) ?? ''} alt="hábitat" />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {tags.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-            {tags.map(t => <span key={t} className="badge badge-blue" style={{ fontWeight: 600 }}>🏷️ {t}</span>)}
-          </div>
-        )}
-
-        <hr className="divider" />
-        
-        {/* Comments Section */}
-        <p className="section-title">Comentarios de la Comunidad</p>
-        {loadingComments ? (
-          <div className="spinner" style={{ width: 20, height: 20, margin: '16px auto', borderWidth: 2 }} />
-        ) : comments.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>Sin comentarios aún sobre esta observación.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {comments.map(c => (
-              <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div className="avatar" style={{ flexShrink: 0, border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--green-light) 0%, rgba(46, 125, 50, 0.05) 100%)' }}>
-                  {c.avatarUrl ? <img src={getAvatarUrl(c.avatarUrl) ?? ''} alt="" /> : c.displayName[0]?.toUpperCase()}
-                </div>
-                <div className="card" style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: '0 2px 6px rgba(0,0,0,0.01)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <b style={{ fontSize: 13, color: 'var(--text)' }}>{c.displayName}</b>
-                    <span style={{ fontSize: 11, color: 'var(--muted)' }}>{relTime(c.createdAt)}</span>
-                  </div>
-                  <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text)' }}>{c.body}</p>
+          <>
+            {photos.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <p className="section-title">Fotos ({photos.length})</p>
+                <div className="photo-grid">
+                  {photos.map((p, i) => {
+                    const url = photoUrl(p) ?? '';
+                    return (
+                      <div 
+                        key={i} 
+                        className="photo-thumb" 
+                        style={{ borderRadius: 'var(--radius)', overflow: 'hidden', boxShadow: 'var(--shadow)' }} 
+                        onClick={() => { if (!failedPhotos[url]) setLightbox(url); }}
+                      >
+                        <img 
+                          src={url} 
+                          alt="" 
+                          onError={(e) => {
+                            setFailedPhotos(prev => ({ ...prev, [url]: true }));
+                            e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                            e.currentTarget.style.objectFit = 'contain';
+                            e.currentTarget.style.padding = '24px';
+                            e.currentTarget.style.background = 'var(--bg)';
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {obs.description && (
+              <div style={{ marginBottom: 20 }}>
+                <p className="section-title">Descripción</p>
+                <p style={{ fontSize: 14, color: 'var(--text)', background: 'var(--bg)', padding: '12px 16px', borderRadius: 'var(--radius)', lineHeight: 1.6, borderLeft: '3px solid var(--green)' }}>
+                  {obs.description}
+                </p>
+              </div>
+            )}
+
+            {/* Observation Data Grid */}
+            <p className="section-title">Información de Campo</p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 12,
+              marginBottom: 20
+            }}>
+              <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
+                <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>FECHA Y HORA</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Calendar size={14} style={{ color: 'var(--muted)' }} /> {new Date(obs.observedAt).toLocaleString()}
+                </span>
+              </div>
+              <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
+                <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>UBICACIÓN (LAT, LNG)</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <MapPin size={14} style={{ color: 'var(--muted)' }} /> {obs.latitude.toFixed(5)}, {obs.longitude.toFixed(5)}
+                </span>
+              </div>
+              {obs.altitude != null && (
+                <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>ALTITUD</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Mountain size={14} style={{ color: 'var(--muted)' }} /> {obs.altitude.toFixed(0)} m
+                  </span>
+                </div>
+              )}
+              <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
+                <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>CANTIDAD INDIVIDUOS</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Hash size={14} style={{ color: 'var(--muted)' }} /> × {obs.quantity}
+                </span>
+              </div>
+              {obs.weatherCondition && (
+                <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>CLIMA</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CloudSun size={14} style={{ color: 'var(--muted)' }} /> {obs.weatherCondition}
+                  </span>
+                </div>
+              )}
+              {(obs.temperature != null || obs.humidity != null) && (
+                <div style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>METEOROLOGÍA</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {obs.temperature != null && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Thermometer size={14} style={{ color: 'var(--muted)' }} /> {obs.temperature}°C
+                      </span>
+                    )}
+                    {obs.humidity != null && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Droplets size={14} style={{ color: 'var(--muted)' }} /> {obs.humidity}%
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {obs.notes && (
+              <div style={{ marginBottom: 20 }}>
+                <p className="section-title">Notas de Observador</p>
+                <p style={{ fontSize: 14, background: 'var(--bg)', color: 'var(--text)', padding: '12px 16px', borderRadius: 'var(--radius)', whiteSpace: 'pre-wrap', lineHeight: 1.6, borderLeft: '3px solid var(--green)', boxShadow: 'var(--shadow)' }}>
+                  {obs.notes}
+                </p>
+              </div>
+            )}
+
+            {(obs.habitatDescription || obs.habitatPhotoUrl) && (
+              <div style={{ marginBottom: 20 }}>
+                <p className="section-title">Hábitat</p>
+                <div className="card" style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: 14, borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {obs.habitatDescription && (
+                    <p style={{ fontSize: 14, margin: 0, lineHeight: 1.6 }}>{obs.habitatDescription}</p>
+                  )}
+                  {obs.habitatPhotoUrl && (() => {
+                    const url = photoUrl(obs.habitatPhotoUrl) ?? '';
+                    return (
+                      <div 
+                        className="photo-thumb" 
+                        style={{ width: 140, height: 140, borderRadius: 'var(--radius)', overflow: 'hidden', boxShadow: 'var(--shadow)' }} 
+                        onClick={() => { if (!failedPhotos[url]) setLightbox(url); }}
+                      >
+                        <img 
+                          src={url} 
+                          alt="hábitat" 
+                          onError={(e) => {
+                            setFailedPhotos(prev => ({ ...prev, [url]: true }));
+                            e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                            e.currentTarget.style.objectFit = 'contain';
+                            e.currentTarget.style.padding = '24px';
+                            e.currentTarget.style.background = 'var(--bg)';
+                          }}
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {staticTags.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+                {staticTags.map(t => (
+                  <span key={t} className="badge badge-blue" style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Tag size={12} /> {t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <hr className="divider" />
+            
+            {/* Comments Section */}
+            <p className="section-title">Comentarios de la Comunidad</p>
+            {loadingComments ? (
+              <div className="spinner" style={{ width: 20, height: 20, margin: '16px auto', borderWidth: 2 }} />
+            ) : comments.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>Sin comentarios aún sobre esta observación.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {comments.map(c => (
+                  <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <Avatar 
+                      url={c.avatarUrl} 
+                      name={c.displayName} 
+                      style={{ flexShrink: 0, border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--green-light) 0%, rgba(46, 125, 50, 0.05) 100%)' }} 
+                    />
+                    <div className="card" style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: '0 2px 6px rgba(0,0,0,0.01)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <b style={{ fontSize: 13, color: 'var(--text)' }}>{c.displayName}</b>
+                        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{relTime(c.createdAt)}</span>
+                      </div>
+                      <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text)' }}>{c.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </Modal>
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
@@ -593,10 +963,20 @@ function RouteModal({
                     onClick={() => setSelObs(o)}
                   >
                     {photos[0] ? (
-                      <img src={photoUrl(photos[0]) ?? ''} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                      <img 
+                        src={photoUrl(photos[0]) ?? ''} 
+                        alt="" 
+                        style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} 
+                        onError={(e) => {
+                          e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                          e.currentTarget.style.objectFit = 'contain';
+                          e.currentTarget.style.padding = '8px';
+                          e.currentTarget.style.background = 'var(--bg)';
+                        }}
+                      />
                     ) : (
-                      <div style={{ width: 50, height: 50, borderRadius: 8, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-                        🔬
+                      <div style={{ width: 50, height: 50, borderRadius: 8, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', flexShrink: 0 }}>
+                        <Search size={20} />
                       </div>
                     )}
                     <div style={{ minWidth: 0 }}>
@@ -612,7 +992,17 @@ function RouteModal({
           </div>
         )}
       </Modal>
-      {selObs && <ObsModal obs={selObs} onClose={() => setSelObs(null)} />}
+      {selObs && (
+        <ObsModal 
+          obs={selObs} 
+          onClose={() => setSelObs(null)} 
+          zIndex={20000} 
+          onUpdate={(updated) => {
+            setSelObs(updated);
+            onRefresh?.();
+          }} 
+        />
+      )}
     </>
   )
 }
@@ -620,6 +1010,7 @@ function RouteModal({
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
+  const location = useLocation()
   const [tab, setTab] = useState(0)
   const [detail, setDetail] = useState<ProjectDetail | null>(null)
   const [obs, setObs] = useState<Observation[]>([])
@@ -687,13 +1078,27 @@ export default function ProjectDetailPage() {
   }
 
   const handleObservationMove = async (obsId: string, lat: number, lng: number) => {
+    let altitude: number | null = null
+    try {
+      const res = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.results && data.results[0]) {
+          altitude = data.results[0].elevation
+        }
+      }
+    } catch (err) {
+      console.warn('Fallo al obtener la altitud de Open-Elevation:', err)
+    }
+
     try {
       await api.patch(`/observations/${obsId}/coordinates`, {
         latitude: lat,
-        longitude: lng
+        longitude: lng,
+        altitude: altitude ?? undefined
       })
-      setObs(prevObs => prevObs.map(o => o.id === obsId ? { ...o, latitude: lat, longitude: lng } : o))
-      setToast({ type: 'success', message: 'Ubicación actualizada correctamente.' })
+      setObs(prevObs => prevObs.map(o => o.id === obsId ? { ...o, latitude: lat, longitude: lng, altitude: altitude ?? o.altitude } : o))
+      setToast({ type: 'success', message: altitude !== null ? `Ubicación actualizada. Altitud detectada: ${altitude.toFixed(0)}m` : 'Ubicación actualizada correctamente.' })
       setTimeout(() => setToast(null), 3000)
     } catch (err) {
       console.error(err)
@@ -746,6 +1151,16 @@ export default function ProjectDetailPage() {
       .then(s => setStats(s.data))
       .catch(() => setStatsError(true))
   }, [id])
+
+  useEffect(() => {
+    if (!loading && obs.length > 0 && location.state?.selectedObsId) {
+      const matched = obs.find(o => o.id === location.state.selectedObsId)
+      if (matched) {
+        setSelObs(matched)
+        nav(location.pathname, { replace: true, state: {} })
+      }
+    }
+  }, [loading, obs, location.state, nav, location.pathname])
 
   if (loading) return <><Navbar /><div className="spinner" style={{ marginTop: 100 }} /></>
   if (!detail) return <><Navbar /><p style={{ padding: 40 }}>Proyecto no encontrado.</p></>
@@ -891,26 +1306,25 @@ export default function ProjectDetailPage() {
         {/* Project Key Metrics Dashboard */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
           {[
-            { label: 'Observaciones', value: obs.length, icon: '🔬', bg: 'linear-gradient(135deg, rgba(46, 125, 50, 0.12) 0%, rgba(46, 125, 50, 0.04) 100%)', color: 'var(--green)' },
-            { label: 'Rutas', value: routes.length, icon: '📍', bg: 'linear-gradient(135deg, rgba(21, 101, 192, 0.12) 0%, rgba(21, 101, 192, 0.04) 100%)', color: '#1565c0' },
-            { label: 'Notas', value: notes.length, icon: '📝', bg: 'linear-gradient(135deg, rgba(245, 124, 0, 0.12) 0%, rgba(245, 124, 0, 0.04) 100%)', color: '#f57c00' },
-            { label: 'Miembros', value: detail.members.length, icon: '👥', bg: 'linear-gradient(135deg, rgba(124, 77, 255, 0.12) 0%, rgba(124, 77, 255, 0.04) 100%)', color: '#7c4dff' },
+            { label: 'Observaciones', value: obs.length, icon: <Search size={18} />, bg: 'var(--green-light)', color: 'var(--green)' },
+            { label: 'Rutas', value: routes.length, icon: <Compass size={18} />, bg: '#e3f2fd', color: '#1565c0' },
+            { label: 'Notas', value: notes.length, icon: <FileText size={18} />, bg: '#ffe0b2', color: '#e65100' },
+            { label: 'Miembros', value: detail.members.length, icon: <Users size={18} />, bg: '#ede7f6', color: '#4a148c' },
           ].map(s => (
-            <div key={s.label} className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+            <div key={s.label} className="card card-hover" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)' }}>
               <div style={{
-                width: 44,
-                height: 44,
-                borderRadius: '12px',
+                width: 38,
+                height: 38,
+                borderRadius: 'var(--radius)',
                 background: s.bg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 20,
                 color: s.color,
                 flexShrink: 0
               }}>{s.icon}</div>
               <div>
-                <p style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{s.value}</p>
+                <p style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{s.value}</p>
                 <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 1 }}>{s.label}</p>
               </div>
             </div>
@@ -918,9 +1332,23 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Tabs Bar */}
-        <div className="tabs">
+        <div className="tabs" style={{ display: 'flex', gap: 4 }}>
           {TABS.map((t, i) => (
-            <button key={t} className={`tab${tab === i ? ' active' : ''}`} onClick={() => setTab(i)}>{t}</button>
+            <button 
+              key={t.label} 
+              className={`tab${tab === i ? ' active' : ''}`} 
+              onClick={() => setTab(i)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, padding: '10px 16px', borderBottom: '2px solid transparent' }}
+            >
+              {t.icon === 'map' && <MapIcon size={14} />}
+              {t.icon === 'search' && <Search size={14} />}
+              {t.icon === 'compass' && <Compass size={14} />}
+              {t.icon === 'file-text' && <FileText size={14} />}
+              {t.icon === 'bar-chart' && <BarChart3 size={14} />}
+              {t.icon === 'activity' && <Activity size={14} />}
+              {t.icon === 'users' && <Users size={14} />}
+              {t.label}
+            </button>
           ))}
         </div>
 
@@ -934,14 +1362,14 @@ export default function ProjectDetailPage() {
               background: 'var(--white)',
               border: '1px solid var(--border)',
               padding: '12px 18px',
-              borderRadius: 12,
+              borderRadius: 'var(--radius-lg)',
               boxShadow: 'var(--shadow)',
               flexWrap: 'wrap',
               gap: 12
             }}>
               <div>
                 <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  🗺️ Mapa del Proyecto
+                  <MapIcon size={15} /> Mapa del Proyecto
                 </h3>
                 <p style={{ fontSize: 12, color: 'var(--muted)', margin: '2px 0 0 0' }}>
                   {editMode 
@@ -959,14 +1387,22 @@ export default function ProjectDetailPage() {
                   padding: '8px 16px',
                   fontSize: 13,
                   fontWeight: 600,
-                  borderRadius: 10,
+                  borderRadius: 'var(--radius)',
                   transition: 'all 0.2s ease',
                   cursor: 'pointer',
                   border: editMode ? '1px solid var(--green-dark)' : '1px solid var(--border)',
-                  boxShadow: editMode ? '0 2px 8px rgba(46, 125, 50, 0.2)' : 'none'
+                  boxShadow: editMode ? 'var(--shadow)' : 'none'
                 }}
               >
-                <span>{editMode ? '🔒 Finalizar Edición' : '🔓 Editar Ubicaciones'}</span>
+                {editMode ? (
+                  <>
+                    <Shield size={14} /> Finalizar Edición
+                  </>
+                ) : (
+                  <>
+                    <Edit2 size={14} /> Editar Ubicaciones
+                  </>
+                )}
               </button>
             </div>
             
@@ -989,38 +1425,48 @@ export default function ProjectDetailPage() {
                 <div 
                   key={o.id} 
                   className="card card-hover" 
-                  style={{ display: 'flex', flexDirection: 'column', padding: 14, border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}
+                  style={{ display: 'flex', flexDirection: 'column', padding: 14, border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}
                   onClick={() => setSelObs(o)}
                 >
                   {/* Photo container */}
                   {photos[0] ? (
-                    <div style={{ width: '100%', height: 160, borderRadius: 10, overflow: 'hidden', marginBottom: 12, position: 'relative' }}>
-                      <img src={photoUrl(photos[0]) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ width: '100%', height: 160, borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: 12, position: 'relative' }}>
+                      <img 
+                        src={photoUrl(photos[0]) ?? ''} 
+                        alt="" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        onError={(e) => {
+                          e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                          e.currentTarget.style.objectFit = 'contain';
+                          e.currentTarget.style.padding = '36px';
+                          e.currentTarget.style.background = 'var(--bg)';
+                        }}
+                      />
                       {photos.length > 1 && (
-                        <span className="badge" style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, backdropFilter: 'blur(4px)', fontWeight: 700 }}>
-                          📸 +{photos.length - 1} fotos
+                        <span className="badge" style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, backdropFilter: 'blur(4px)', fontWeight: 700, borderRadius: 'var(--radius)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          +{photos.length - 1} fotos
                         </span>
                       )}
                     </div>
                   ) : (
-                    <div style={{ width: '100%', height: 160, borderRadius: 10, background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, fontSize: 32 }}>
-                      🔬
+                    <div style={{ width: '100%', height: 160, borderRadius: 'var(--radius)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, color: 'var(--muted)' }}>
+                      <Search size={32} />
                     </div>
                   )}
 
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                      <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text)', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {o.title ?? o.taxonName}
                       </h4>
                       <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', margin: '2px 0 10px 0' }}>{o.taxonName}</p>
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 12, color: 'var(--muted)' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>📅 {new Date(o.observedAt).toLocaleDateString()}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>🔢 Cant: {o.quantity}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={13} /> {new Date(o.observedAt).toLocaleDateString()}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Cant: {o.quantity}</span>
                       {o.temperature != null && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>🌡️ {o.temperature}°C</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Temp: {o.temperature}°C</span>
                       )}
                     </div>
                   </div>
@@ -1028,8 +1474,8 @@ export default function ProjectDetailPage() {
               )
             })}
             {obs.length === 0 && (
-              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
-                <p style={{ fontSize: 32, marginBottom: 8 }}>🔬</p>
+              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px 40px', color: 'var(--muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Search size={32} color="var(--muted)" style={{ marginBottom: 8 }} />
                 <p>Sin observaciones registradas en este proyecto.</p>
               </div>
             )}
@@ -1045,27 +1491,35 @@ export default function ProjectDetailPage() {
                 <div 
                   key={r.id} 
                   className="card card-hover" 
-                  style={{ display: 'flex', flexDirection: 'column', padding: 16, border: '1px solid var(--border)', borderRadius: 14 }}
+                  style={{ display: 'flex', flexDirection: 'column', padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}
                   onClick={() => setSelRoute(r)}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                     <div>
-                      <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>📍 {r.name}</h4>
+                      <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{r.name}</h4>
                       <div style={{ display: 'flex', gap: 14, marginTop: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, color: 'var(--muted)' }}>📅 {new Date(r.startedAt).toLocaleString()}</span>
-                        {dur && <span style={{ fontSize: 13, color: 'var(--muted)' }}>⏱️ Duración: {dur}</span>}
+                        <span style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={13} /> {new Date(r.startedAt).toLocaleString()}</span>
+                        {dur && (
+                          <span style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Clock size={13} /> {dur}
+                          </span>
+                        )}
                       </div>
                     </div>
                     
                     <div style={{ display: 'flex', gap: 8 }}>
                       {obsCount > 0 && (
-                        <span className="badge badge-green" style={{ fontWeight: 600 }}>🔬 {obsCount} obs.</span>
+                        <span className="badge badge-green" style={{ fontWeight: 600, borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Search size={11} /> {obsCount} obs.
+                        </span>
                       )}
-                      <span className="badge badge-blue" style={{ fontWeight: 600 }}>📏 {(r.distanceMeters / 1000).toFixed(2)} km</span>
+                      <span className="badge badge-blue" style={{ fontWeight: 600, borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Ruler size={11} /> {(r.distanceMeters / 1000).toFixed(2)} km
+                      </span>
                     </div>
                   </div>
                   {r.notes && (
-                    <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 10, background: 'var(--bg)', padding: '8px 12px', borderRadius: 8, borderLeft: '3px solid var(--green)' }}>
+                    <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 10, background: 'var(--bg)', padding: '8px 12px', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--green)' }}>
                       {r.notes}
                     </p>
                   )}
@@ -1073,8 +1527,8 @@ export default function ProjectDetailPage() {
               )
             })}
             {routes.length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
-                <p style={{ fontSize: 32, marginBottom: 8 }}>📍</p>
+              <div className="card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Compass size={32} color="var(--muted)" style={{ marginBottom: 8 }} />
                 <p>Sin rutas grabadas en este proyecto.</p>
               </div>
             )}
@@ -1084,22 +1538,22 @@ export default function ProjectDetailPage() {
         {tab === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {notes.map(n => (
-              <div key={n.id} className="card" style={{ padding: 18, border: '1px solid var(--border)', borderRadius: 14 }}>
+              <div key={n.id} className="card" style={{ padding: 18, border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
-                  <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>📝 {n.title}</h4>
-                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>📅 {new Date(n.createdAt).toLocaleString()}</span>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{n.title}</h4>
+                  <span style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={13} /> {new Date(n.createdAt).toLocaleString()}</span>
                 </div>
                 <p style={{ fontSize: 14, whiteSpace: 'pre-wrap', lineHeight: 1.6, color: 'var(--text)' }}>{n.body}</p>
                 {n.latitude != null && n.longitude != null && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, color: 'var(--muted)', background: 'var(--bg)', padding: '4px 10px', borderRadius: 6, alignSelf: 'flex-start' }}>
-                    <span>📍 Coordenadas: {n.latitude.toFixed(5)}, {n.longitude.toFixed(5)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, color: 'var(--muted)', background: 'var(--bg)', padding: '4px 10px', borderRadius: 'var(--radius)', alignSelf: 'flex-start' }}>
+                    <span>Coordenadas: {n.latitude.toFixed(5)}, {n.longitude.toFixed(5)}</span>
                   </div>
                 )}
               </div>
             ))}
             {notes.length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
-                <p style={{ fontSize: 32, marginBottom: 8 }}>📝</p>
+              <div className="card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <FileText size={32} color="var(--muted)" style={{ marginBottom: 8 }} />
                 <p>Sin notas registradas en este proyecto.</p>
               </div>
             )}
@@ -1116,9 +1570,12 @@ export default function ProjectDetailPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {activity.map((a, i) => (
               <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div className="avatar avatar-lg" style={{ border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--green-light) 0%, rgba(46, 125, 50, 0.05) 100%)' }}>
-                  {a.avatarUrl ? <img src={getAvatarUrl(a.avatarUrl) ?? ''} alt="" /> : a.actorName[0]?.toUpperCase()}
-                </div>
+                <Avatar 
+                  url={a.avatarUrl} 
+                  name={a.actorName} 
+                  className="avatar avatar-lg"
+                  style={{ border: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--green-light) 0%, rgba(46, 125, 50, 0.05) 100%)' }} 
+                />
                 <div className="card" style={{ flex: 1, padding: '12px 16px', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 2px 6px rgba(0,0,0,0.01)' }}>
                   <p style={{ fontSize: 14, margin: 0, color: 'var(--text)' }}><b>{a.actorName}</b> {a.description}</p>
                   <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, margin: 0 }}>{relTime(a.occurredAt)}</p>
@@ -1137,13 +1594,12 @@ export default function ProjectDetailPage() {
                 className="card card-hover" 
                 style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px', border: '1px solid var(--border)', borderRadius: 14 }}
               >
-                <div className="avatar avatar-lg" style={{ border: '2px solid var(--green-light)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', background: 'linear-gradient(135deg, var(--green-light) 0%, rgba(46, 125, 50, 0.05) 100%)' }}>
-                  {m.avatarUrl ? (
-                    <img src={getAvatarUrl(m.avatarUrl) ?? ''} alt="" />
-                  ) : (
-                    m.displayName[0]?.toUpperCase()
-                  )}
-                </div>
+                <Avatar 
+                  url={m.avatarUrl} 
+                  name={m.displayName} 
+                  className="avatar avatar-lg"
+                  style={{ border: '2px solid var(--green-light)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', background: 'linear-gradient(135deg, var(--green-light) 0%, rgba(46, 125, 50, 0.05) 100%)' }} 
+                />
                 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: 14, display: 'block', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.displayName}</b>
@@ -1156,8 +1612,8 @@ export default function ProjectDetailPage() {
                   gap: 4,
                   fontSize: 10,
                   fontWeight: 700,
-                  padding: '3px 10px',
-                  borderRadius: 20,
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius)',
                   textTransform: 'capitalize',
                   ...(
                     m.role === 'owner' ? { background: 'rgba(245,158,11,0.15)', color: '#b45309', border: '1px solid rgba(245,158,11,0.35)' } :
@@ -1166,9 +1622,23 @@ export default function ProjectDetailPage() {
                     { background: 'rgba(107,114,128,0.12)', color: '#4b5563', border: '1px solid rgba(107,114,128,0.3)' }
                   )
                 }}>
-                  {m.role === 'owner' ? '★ Propietario' :
-                   m.role === 'editor' ? '✏ Editor' :
-                   m.role === 'viewer' ? '👁 Visualizador' : '👤 Miembro'}
+                  {m.role === 'owner' ? (
+                    <>
+                      <Crown size={11} /> Propietario
+                    </>
+                  ) : m.role === 'editor' ? (
+                    <>
+                      <Edit2 size={11} /> Editor
+                    </>
+                  ) : m.role === 'viewer' ? (
+                    <>
+                      <Eye size={11} /> Visualizador
+                    </>
+                  ) : (
+                    <>
+                      <Users size={11} /> Miembro
+                    </>
+                  )}
                 </span>
               </div>
             ))}
@@ -1176,7 +1646,17 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      {selObs && <ObsModal obs={selObs} onClose={() => setSelObs(null)} />}
+      {selObs && (
+        <ObsModal 
+          obs={selObs} 
+          onClose={() => setSelObs(null)} 
+          zIndex={20000} 
+          onUpdate={(updated) => {
+            setObs(prev => prev.map(o => o.id === updated.id ? updated : o));
+            setSelObs(updated);
+          }} 
+        />
+      )}
       {selRoute && (
         <RouteModal
           route={selRoute}
@@ -1196,8 +1676,8 @@ export default function ProjectDetailPage() {
           background: toast.type === 'success' ? 'var(--green)' : '#d32f2f',
           color: '#fff',
           padding: '12px 20px',
-          borderRadius: 12,
-          boxShadow: '0 4px 15px rgba(0,0,0,0.15)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-lg)',
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
@@ -1205,7 +1685,7 @@ export default function ProjectDetailPage() {
           animation: 'slideIn 0.3s ease',
           border: '1px solid rgba(255,255,255,0.1)'
         }}>
-          <span>{toast.type === 'success' ? '✅' : '❌'}</span>
+          <span>{toast.type === 'success' ? <Check size={16} /> : <X size={16} />}</span>
           <span>{toast.message}</span>
         </div>
       )}

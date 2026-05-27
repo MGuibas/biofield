@@ -217,7 +217,11 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
             .Where(c => c.ObservationId == observationId)
             .Include(c => c.User)
             .OrderBy(c => c.CreatedAt)
-            .Select(c => new CommentResponse(c.Id, c.ObservationId, c.UserId, c.User.DisplayName, c.User.AvatarUrl, c.Body, c.CreatedAt))
+            .Select(c => new CommentResponse(c.Id, c.ObservationId, c.UserId, c.User.DisplayName, 
+                c.User.AvatarUrl != null && !c.User.AvatarUrl.StartsWith("http") && c.User.AvatarUrl.StartsWith("/avatars/")
+                    ? "/api" + c.User.AvatarUrl
+                    : c.User.AvatarUrl, 
+                c.Body, c.CreatedAt))
             .ToListAsync();
     }
 
@@ -229,7 +233,7 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
         var comment = new Comment { Id = Guid.NewGuid(), ObservationId = observationId, UserId = userId, Body = request.Body };
         db.Comments.Add(comment);
         await db.SaveChangesAsync();
-        return new CommentResponse(comment.Id, observationId, userId, user.DisplayName, user.AvatarUrl, comment.Body, comment.CreatedAt);
+        return new CommentResponse(comment.Id, observationId, userId, user.DisplayName, user.GetNormalizedAvatarUrl(), comment.Body, comment.CreatedAt);
     }
 
     public async Task DeleteCommentAsync(Guid commentId, Guid userId)
@@ -248,7 +252,10 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
             .Where(o => o.ProjectId == projectId)
             .Include(o => o.Project)
             .Join(db.Users, o => o.UserId, u => u.Id, (o, u) => new ActivityItem(
-                "observation", o.Id, u.DisplayName, u.AvatarUrl,
+                "observation", o.Id, u.DisplayName, 
+                u.AvatarUrl != null && !u.AvatarUrl.StartsWith("http") && u.AvatarUrl.StartsWith("/avatars/")
+                    ? "/api" + u.AvatarUrl
+                    : u.AvatarUrl,
                 $"añadió {o.TaxonName}{(o.Title != null ? $" ({o.Title})" : "")}",
                 o.CreatedAt, null))
             .ToListAsync();
@@ -256,7 +263,10 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
         var noteActivity = await db.Notes
             .Where(n => n.ProjectId == projectId)
             .Join(db.Users, n => n.UserId, u => u.Id, (n, u) => new ActivityItem(
-                "note", n.Id, u.DisplayName, u.AvatarUrl,
+                "note", n.Id, u.DisplayName, 
+                u.AvatarUrl != null && !u.AvatarUrl.StartsWith("http") && u.AvatarUrl.StartsWith("/avatars/")
+                    ? "/api" + u.AvatarUrl
+                    : u.AvatarUrl,
                 $"creó la nota \"{n.Title}\"",
                 n.CreatedAt, null))
             .ToListAsync();
@@ -264,7 +274,10 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
         var routeActivity = await db.Routes
             .Where(r => r.ProjectId == projectId)
             .Join(db.Users, r => r.UserId, u => u.Id, (r, u) => new ActivityItem(
-                "route", r.Id, u.DisplayName, u.AvatarUrl,
+                "route", r.Id, u.DisplayName, 
+                u.AvatarUrl != null && !u.AvatarUrl.StartsWith("http") && u.AvatarUrl.StartsWith("/avatars/")
+                    ? "/api" + u.AvatarUrl
+                    : u.AvatarUrl,
                 $"grabó la ruta \"{r.Name}\"",
                 r.StartedAt, null))
             .ToListAsync();
@@ -273,7 +286,10 @@ public class ObservationService(AppDbContext db, IStorageService storage) : IObs
             .Include(c => c.Observation)
             .Where(c => c.Observation.ProjectId == projectId)
             .Join(db.Users, c => c.UserId, u => u.Id, (c, u) => new ActivityItem(
-                "comment", c.ObservationId, u.DisplayName, u.AvatarUrl,
+                "comment", c.ObservationId, u.DisplayName, 
+                u.AvatarUrl != null && !u.AvatarUrl.StartsWith("http") && u.AvatarUrl.StartsWith("/avatars/")
+                    ? "/api" + u.AvatarUrl
+                    : u.AvatarUrl,
                 $"comentó en {c.Observation.TaxonName}",
                 c.CreatedAt, null))
             .ToListAsync();

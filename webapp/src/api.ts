@@ -22,8 +22,12 @@ export function photoUrl(key: string | null | undefined): string | null {
 export function getAvatarUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   if (url.startsWith('http')) return url;
+  let cleanUrl = url;
+  if (cleanUrl.startsWith('/avatars/')) {
+    cleanUrl = `/api${cleanUrl}`;
+  }
   const cleanApiBase = API_BASE.replace('/api', '');
-  return `${cleanApiBase}${url}`;
+  return `${cleanApiBase}${cleanUrl}`;
 }
 
 const api = axios.create({ baseURL: API_BASE })

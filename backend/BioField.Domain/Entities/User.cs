@@ -7,6 +7,14 @@ public class User
     public string GoogleId { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
+    public string? GetNormalizedAvatarUrl()
+    {
+        if (string.IsNullOrEmpty(AvatarUrl)) return null;
+        if (AvatarUrl.StartsWith("http", System.StringComparison.OrdinalIgnoreCase)) return AvatarUrl;
+        if (AvatarUrl.StartsWith("/avatars/", System.StringComparison.OrdinalIgnoreCase))
+            return $"/api{AvatarUrl}";
+        return AvatarUrl;
+    }
     public string? Speciality { get; set; }
     public string? Institution { get; set; }
     public string Role { get; set; } = "User";

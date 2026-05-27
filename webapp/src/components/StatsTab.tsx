@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { ProjectStats } from '../types'
+import { Search, Compass, FileText, Clock, Ruler, Dna } from 'lucide-react'
 
 // ── Bar chart SVG ─────────────────────────────────────────────────────────────
-function BarChart({ data, labelKey, valueKey, color = '#4caf50' }: {
+function BarChart({ data, labelKey, valueKey, color = 'var(--green)' }: {
   data: Record<string, any>[]
   labelKey: string
   valueKey: string
@@ -12,7 +13,7 @@ function BarChart({ data, labelKey, valueKey, color = '#4caf50' }: {
 }) {
   if (!data.length) return <p style={{ color: 'var(--muted)', fontSize: 13 }}>Sin datos.</p>
   const max = Math.max(...data.map(d => d[valueKey]))
-  const W = 600, barH = 28, gap = 6, labelW = 160, padding = 16
+  const W = 600, barH = 20, gap = 8, labelW = 160, padding = 16
   const height = data.length * (barH + gap) + padding * 2
 
   return (
@@ -22,13 +23,25 @@ function BarChart({ data, labelKey, valueKey, color = '#4caf50' }: {
         const barW = max > 0 ? ((d[valueKey] / max) * (W - labelW - 60)) : 0
         return (
           <g key={i}>
-            <text x={labelW - 6} y={y + barH / 2 + 5} textAnchor="end" fontSize={12} fill="var(--muted)"
-              style={{ fontFamily: 'system-ui' }}>
+            <text x={labelW - 10} y={y + barH / 2 + 4} textAnchor="end" fontSize={11} fill="var(--muted)"
+              style={{ fontFamily: 'var(--font-family, inherit)', fontWeight: 500 }}>
               {String(d[labelKey]).length > 22 ? String(d[labelKey]).slice(0, 22) + '…' : d[labelKey]}
             </text>
-            <rect x={labelW} y={y} width={Math.max(barW, 2)} height={barH} rx={4} fill={color} opacity={0.85} />
-            <text x={labelW + barW + 6} y={y + barH / 2 + 5} fontSize={12} fill="var(--text)"
-              fontWeight="600" style={{ fontFamily: 'system-ui' }}>
+            <rect 
+              x={labelW} y={y} width={Math.max(barW, 2)} height={barH} rx={3} 
+              fill={color} opacity={0.8}
+              style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.fill = 'var(--green-dark)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.opacity = '0.8';
+                e.currentTarget.style.fill = color;
+              }}
+            />
+            <text x={labelW + barW + 8} y={y + barH / 2 + 4} fontSize={11} fill="var(--text)"
+              fontWeight="700" style={{ fontFamily: 'var(--font-family, inherit)' }}>
               {d[valueKey]}
             </text>
           </g>
@@ -47,7 +60,7 @@ function DayChart({ data }: { data: { date: string; count: number }[] }) {
   const innerH = H - padB - padT
   const step = innerW / Math.max(data.length - 1, 1)
 
-  // Show at most 30 labels to avoid clutter
+  // Show at most 12 labels to avoid clutter
   const showLabel = (i: number) => data.length <= 12 || i % Math.ceil(data.length / 12) === 0
 
   return (
@@ -57,8 +70,8 @@ function DayChart({ data }: { data: { date: string; count: number }[] }) {
         const y = padT + innerH * (1 - t)
         return (
           <g key={t}>
-            <line x1={padL} x2={W - 10} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={padL - 4} y={y + 4} textAnchor="end" fontSize={10} fill="var(--muted)">
+            <line x1={padL} x2={W - 10} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} opacity={0.6} />
+            <text x={padL - 6} y={y + 3} textAnchor="end" fontSize={9} fill="var(--muted)" fontWeight="500">
               {Math.round(max * t)}
             </text>
           </g>
@@ -68,17 +81,26 @@ function DayChart({ data }: { data: { date: string; count: number }[] }) {
       {data.map((d, i) => {
         const x = padL + i * step
         const barH = max > 0 ? (d.count / max) * innerH : 0
-        const barW = Math.max(step * 0.6, 4)
+        const barW = Math.max(step * 0.45, 3)
         return (
           <g key={i}>
             <rect
               x={x - barW / 2} y={padT + innerH - barH}
               width={barW} height={Math.max(barH, 1)}
-              rx={2} fill="#4caf50" opacity={0.8}
+              rx={2} fill="var(--green)" opacity={0.75}
+              style={{ transition: 'all 0.2s ease', cursor: 'pointer' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.fill = 'var(--green-dark)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.opacity = '0.75';
+                e.currentTarget.style.fill = 'var(--green)';
+              }}
             />
             {showLabel(i) && (
-              <text x={x} y={H - 4} textAnchor="middle" fontSize={9} fill="var(--muted)"
-                style={{ fontFamily: 'system-ui' }}>
+              <text x={x} y={H - 6} textAnchor="middle" fontSize={9} fill="var(--muted)"
+                style={{ fontFamily: 'var(--font-family, inherit)', fontWeight: 500 }}>
                 {d.date.slice(5)}
               </text>
             )}
@@ -113,16 +135,38 @@ function HeatmapMap({ points }: { points: [number, number][] }) {
     if (bounds.length) map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] })
   }, [points])
 
-  return <div ref={ref} style={{ height: 320, borderRadius: 8, overflow: 'hidden' }} />
+  return <div ref={ref} style={{ height: 320, borderRadius: 'var(--radius)', overflow: 'hidden' }} />
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ icon, value, label }: { icon: string; value: string | number; label: string }) {
+function StatCard({ icon, value, label }: { icon: ReactNode; value: string | number; label: string }) {
   return (
-    <div className="card" style={{ textAlign: 'center', padding: '20px 16px', flex: '1 1 140px' }}>
-      <div style={{ fontSize: 28, marginBottom: 6 }}>{icon}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--green)', lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{label}</div>
+    <div className="card" style={{ 
+      textAlign: 'center', 
+      padding: '24px 16px', 
+      flex: '1 1 140px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--shadow)',
+      border: '1px solid var(--border)'
+    }}>
+      <div style={{
+        width: 40,
+        height: 40,
+        borderRadius: 'var(--radius)',
+        background: 'var(--green-light)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--green)',
+        marginBottom: 10
+      }}>
+        {icon}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6, fontWeight: 600 }}>{label}</div>
     </div>
   )
 }
@@ -134,29 +178,29 @@ export default function StatsTab({ stats }: { stats: ProjectStats }) {
 
       {/* Resumen */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <StatCard icon="🔬" value={stats.totalObservations} label="Observaciones" />
-        <StatCard icon="🧬" value={stats.uniqueSpecies}     label="Especies únicas" />
-        <StatCard icon="📍" value={stats.totalRoutes}       label="Rutas" />
-        <StatCard icon="📏" value={`${stats.totalDistanceKm} km`} label="Distancia total" />
-        <StatCard icon="⏱"  value={`${stats.totalFieldHours}h`}  label="Horas en campo" />
-        <StatCard icon="📝" value={stats.totalNotes}        label="Notas" />
+        <StatCard icon={<Search size={18} />} value={stats.totalObservations} label="Observaciones" />
+        <StatCard icon={<Dna size={18} />} value={stats.uniqueSpecies}     label="Especies únicas" />
+        <StatCard icon={<Compass size={18} />} value={stats.totalRoutes}       label="Rutas" />
+        <StatCard icon={<Ruler size={18} />} value={`${stats.totalDistanceKm} km`} label="Distancia total" />
+        <StatCard icon={<Clock size={18} />}  value={`${stats.totalFieldHours}h`}  label="Horas en campo" />
+        <StatCard icon={<FileText size={18} />} value={stats.totalNotes}        label="Notas" />
       </div>
 
       {/* Especies más observadas */}
-      <div className="card">
+      <div className="card" style={{ borderRadius: 'var(--radius-lg)' }}>
         <p className="section-title" style={{ marginBottom: 14 }}>Top especies observadas</p>
-        <BarChart data={stats.topSpecies} labelKey="taxonName" valueKey="count" color="#4caf50" />
+        <BarChart data={stats.topSpecies} labelKey="taxonName" valueKey="count" color="var(--green)" />
       </div>
 
       {/* Observaciones por día */}
-      <div className="card">
+      <div className="card" style={{ borderRadius: 'var(--radius-lg)' }}>
         <p className="section-title" style={{ marginBottom: 14 }}>Observaciones por fecha</p>
         <DayChart data={stats.obsByDay} />
       </div>
 
       {/* Por miembro */}
       {stats.obsByMember.length > 1 && (
-        <div className="card">
+        <div className="card" style={{ borderRadius: 'var(--radius-lg)' }}>
           <p className="section-title" style={{ marginBottom: 14 }}>Observaciones por miembro</p>
           <BarChart data={stats.obsByMember} labelKey="displayName" valueKey="observationCount" color="#1565c0" />
         </div>
@@ -164,7 +208,7 @@ export default function StatsTab({ stats }: { stats: ProjectStats }) {
 
       {/* Mapa de calor */}
       {stats.heatmapPoints.length > 0 && (
-        <div className="card">
+        <div className="card" style={{ borderRadius: 'var(--radius-lg)' }}>
           <p className="section-title" style={{ marginBottom: 14 }}>Mapa de calor de observaciones</p>
           <HeatmapMap points={stats.heatmapPoints} />
         </div>

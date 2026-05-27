@@ -127,7 +127,7 @@ public class ObservationDetailController(IObservationService observationService,
             var obs = await observationService.GetByIdAsync(id, UserId);
             var req = new UpdateObservationRequest(
                 obs.RouteId, obs.TaxonId, obs.TaxonName, obs.Title, obs.Description,
-                request.Latitude, request.Longitude, obs.Altitude, obs.ObservedAt, obs.Notes,
+                request.Latitude, request.Longitude, request.Altitude ?? obs.Altitude, obs.ObservedAt, obs.Notes,
                 obs.Quantity, obs.TagsJson, obs.WeatherCondition, obs.Temperature, obs.Humidity,
                 obs.HabitatDescription, obs.HabitatPhotoUrl);
             return Ok(await observationService.UpdateAsync(id, req, UserId));

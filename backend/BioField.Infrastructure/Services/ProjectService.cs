@@ -149,5 +149,5 @@ public class ProjectService(AppDbContext db, IStorageService storage) : IProject
 
     private static ProjectDetailResponse ToDetailResponse(Project p) =>
         new(p.Id, p.Name, p.Description, p.OwnerId, p.CreatedAt, p.IsArchived, p.ShareCode, p.CoverImageUrl,
-            p.Members.Select(m => new MemberResponse(m.UserId, m.User.DisplayName, m.User.AvatarUrl, m.Role.ToString(), m.JoinedAt)));
+            p.Members.Select(m => new MemberResponse(m.UserId, m.User.DisplayName, m.User.GetNormalizedAvatarUrl(), m.Role.ToString(), m.JoinedAt)));
 }

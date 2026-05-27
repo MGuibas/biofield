@@ -5,6 +5,9 @@ import api, { photoUrl, getAvatarUrl } from '../api'
 import Navbar from '../components/Navbar'
 import Modal from '../components/Modal'
 import type { AdminUserSummary, AdminUserDetail } from '../types'
+import { 
+  FolderOpen, Search, Eye, Calendar, Clock, Briefcase, Building2, MapPin, Users
+} from 'lucide-react'
 
 export default function AdminPage() {
   const { user: currentUser } = useAuth()
@@ -17,6 +20,7 @@ export default function AdminPage() {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [updatingRole, setUpdatingRole] = useState<string | null>(null)
   const [lightbox, setLightbox] = useState<string | null>(null)
+  const [failedPhotos, setFailedPhotos] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetchUsers()
@@ -127,10 +131,11 @@ export default function AdminPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 24,
               color: 'var(--green)',
               flexShrink: 0
-            }}>👥</div>
+            }}>
+              <Users size={24} />
+            </div>
             <div>
               <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{totalUsers}</p>
               <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>Usuarios Registrados</p>
@@ -145,10 +150,11 @@ export default function AdminPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 24,
               color: '#1565c0',
               flexShrink: 0
-            }}>📂</div>
+            }}>
+              <FolderOpen size={24} />
+            </div>
             <div>
               <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{totalProjects}</p>
               <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>Proyectos Activos</p>
@@ -163,10 +169,11 @@ export default function AdminPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 24,
               color: '#ef6c00',
               flexShrink: 0
-            }}>🔬</div>
+            }}>
+              <Eye size={24} />
+            </div>
             <div>
               <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color: 'var(--text)' }}>{totalObservations}</p>
               <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>Observaciones Totales</p>
@@ -176,7 +183,9 @@ export default function AdminPage() {
 
         {/* Search and Filters */}
         <div style={{ position: 'relative', marginBottom: 28 }}>
-          <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 18, pointerEvents: 'none' }}>🔍</span>
+          <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+            <Search size={18} />
+          </span>
           <input 
             type="text" 
             placeholder="Buscar usuario por nombre, email, especialidad o institución..." 
@@ -227,10 +236,22 @@ export default function AdminPage() {
                       fontWeight: 700
                     }}
                   >
-                    {u.avatarUrl 
-                      ? <img src={getAvatarUrl(u.avatarUrl) ?? ''} alt={u.displayName} /> 
-                      : u.displayName[0]?.toUpperCase()
-                    }
+                    {u.avatarUrl ? (
+                      <img 
+                        src={getAvatarUrl(u.avatarUrl) ?? ''} 
+                        alt={u.displayName} 
+                        referrerPolicy="no-referrer" 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            parent.innerText = u.displayName[0]?.toUpperCase() ?? '?';
+                          }
+                        }}
+                      />
+                    ) : (
+                      u.displayName[0]?.toUpperCase()
+                    )}
                   </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -246,18 +267,18 @@ export default function AdminPage() {
                 <div style={{ fontSize: 13, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
                   {(u.speciality || u.institution) && (
                     <p style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span>🧑‍🔬</span> 
+                      <Briefcase size={14} style={{ color: 'var(--muted)' }} /> 
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <b>{u.speciality || 'Generalist'}</b> {u.institution ? `en ${u.institution}` : ''}
                       </span>
                     </p>
                   )}
                   <p style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span>📅</span> <span>Registrado: <b>{new Date(u.createdAt).toLocaleDateString()}</b></span>
+                    <Calendar size={14} style={{ color: 'var(--muted)' }} /> <span>Registrado: <b>{new Date(u.createdAt).toLocaleDateString()}</b></span>
                   </p>
                   {u.lastLogin && (
                     <p style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span>🕒</span> <span>Último acceso: <b>{new Date(u.lastLogin).toLocaleDateString()}</b></span>
+                      <Clock size={14} style={{ color: 'var(--muted)' }} /> <span>Último acceso: <b>{new Date(u.lastLogin).toLocaleDateString()}</b></span>
                     </p>
                   )}
                 </div>
@@ -265,14 +286,18 @@ export default function AdminPage() {
 
               <div>
                 {/* Stats indicators inside card */}
-                <div style={{ display: 'flex', gap: 12, background: '#f8f9fa', padding: '10px 14px', borderRadius: '12px', marginBottom: 16, border: '1px solid rgba(0,0,0,0.02)' }}>
-                  <div style={{ flex: 1, textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>📂 {u.projectCount}</span>
+                <div style={{ display: 'flex', gap: 12, background: 'var(--bg)', padding: '10px 14px', borderRadius: '12px', marginBottom: 16, border: '1px solid var(--border)' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                      <FolderOpen size={15} style={{ color: 'var(--muted)' }} /> {u.projectCount}
+                    </span>
                     <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Proyectos</span>
                   </div>
                   <div style={{ width: 1, background: 'var(--border)' }} />
-                  <div style={{ flex: 1, textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>🔬 {u.observationCount}</span>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                      <Eye size={15} style={{ color: 'var(--muted)' }} /> {u.observationCount}
+                    </span>
                     <span style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Obs.</span>
                   </div>
                 </div>
@@ -349,10 +374,22 @@ export default function AdminPage() {
                   color: 'var(--green)'
                 }}
               >
-                {selectedUserDetail.user.avatarUrl 
-                  ? <img src={getAvatarUrl(selectedUserDetail.user.avatarUrl) ?? ''} alt="" /> 
-                  : selectedUserDetail.user.displayName[0]?.toUpperCase()
-                }
+                {selectedUserDetail.user.avatarUrl ? (
+                  <img 
+                    src={getAvatarUrl(selectedUserDetail.user.avatarUrl) ?? ''} 
+                    alt="" 
+                    referrerPolicy="no-referrer" 
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerText = selectedUserDetail.user.displayName[0]?.toUpperCase() ?? '?';
+                      }
+                    }}
+                  />
+                ) : (
+                  selectedUserDetail.user.displayName[0]?.toUpperCase()
+                )}
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -372,8 +409,16 @@ export default function AdminPage() {
                 
                 {(selectedUserDetail.user.speciality || selectedUserDetail.user.institution) && (
                   <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 8 }}>
-                    {selectedUserDetail.user.speciality && <span>🧑‍🔬 Especialidad: <b>{selectedUserDetail.user.speciality}</b></span>}
-                    {selectedUserDetail.user.institution && <span>🏢 Institución: <b>{selectedUserDetail.user.institution}</b></span>}
+                    {selectedUserDetail.user.speciality && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Briefcase size={12} /> Especialidad: <b>{selectedUserDetail.user.speciality}</b>
+                      </span>
+                    )}
+                    {selectedUserDetail.user.institution && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Building2 size={12} /> Institución: <b>{selectedUserDetail.user.institution}</b>
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -382,14 +427,14 @@ export default function AdminPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
             <div className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--border)', borderRadius: '12px' }}>
-              <div style={{ fontSize: 22, color: 'var(--green)' }}>📅</div>
+              <div style={{ fontSize: 22, color: 'var(--green)', display: 'flex', alignItems: 'center' }}><Calendar size={20} /></div>
               <div>
                 <p style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.03em', fontWeight: 600 }}>Fecha Registro</p>
                 <p style={{ fontSize: 13, fontWeight: 600 }}>{new Date(selectedUserDetail.user.createdAt).toLocaleString()}</p>
               </div>
             </div>
             <div className="card" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--border)', borderRadius: '12px' }}>
-              <div style={{ fontSize: 22, color: 'var(--green)' }}>🕒</div>
+              <div style={{ fontSize: 22, color: 'var(--green)', display: 'flex', alignItems: 'center' }}><Clock size={20} /></div>
               <div>
                 <p style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.03em', fontWeight: 600 }}>Último Acceso</p>
                 <p style={{ fontSize: 13, fontWeight: 600 }}>
@@ -412,6 +457,7 @@ export default function AdminPage() {
                     <div 
                       key={p.id} 
                       className="card card-hover" 
+                      onClick={() => nav('/projects/' + p.id)}
                       style={{ 
                         padding: 0, 
                         overflow: 'hidden', 
@@ -420,7 +466,8 @@ export default function AdminPage() {
                         border: '1px solid var(--border)', 
                         borderRadius: '12px',
                         background: 'var(--white)',
-                        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        cursor: 'pointer'
                       }}
                     >
                       <div style={{ 
@@ -438,8 +485,8 @@ export default function AdminPage() {
                           {p.description && <p style={{ fontSize: 12, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 32, margin: '0 0 8px 0' }}>{p.description}</p>}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-                          <span>📅 {new Date(p.createdAt).toLocaleDateString()}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text)' }}>🔬 {p.observationCount} obs.</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Calendar size={12} /> {new Date(p.createdAt).toLocaleDateString()}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600, color: 'var(--text)' }}><Eye size={12} /> {p.observationCount} obs.</span>
                         </div>
                       </div>
                     </div>
@@ -453,7 +500,7 @@ export default function AdminPage() {
           <p className="section-title">Observaciones recientes ({selectedUserDetail.recentObservations.length})</p>
           <div>
             {selectedUserDetail.recentObservations.length === 0 ? (
-              <p style={{ fontSize: 14, color: 'var(--muted)', background: '#f8f9fa', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>El usuario no ha registrado observaciones.</p>
+              <p style={{ fontSize: 14, color: 'var(--muted)', background: 'var(--bg)', border: '1px solid var(--border)', padding: '16px', borderRadius: '12px', textAlign: 'center' }}>El usuario no ha registrado observaciones.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {selectedUserDetail.recentObservations.map(o => {
@@ -476,6 +523,7 @@ export default function AdminPage() {
                     <div 
                       key={o.id} 
                       className="card card-hover" 
+                      onClick={() => nav('/projects/' + o.projectId, { state: { selectedObsId: o.id } })}
                       style={{ 
                         display: 'flex', 
                         gap: 18, 
@@ -484,7 +532,8 @@ export default function AdminPage() {
                         border: '1px solid var(--border)',
                         borderRadius: '14px',
                         background: 'var(--white)',
-                        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                        cursor: 'pointer'
                       }}
                     >
                       {hasPhotos && (
@@ -498,9 +547,25 @@ export default function AdminPage() {
                             flexShrink: 0,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
                           }}
-                          onClick={() => setLightbox(photoUrl(photos[0]) ?? '')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const url = photoUrl(photos[0]) ?? '';
+                            if (!failedPhotos[url]) setLightbox(url);
+                          }}
                         >
-                          <img src={photoUrl(photos[0]) ?? ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
+                          <img 
+                            src={photoUrl(photos[0]) ?? ''} 
+                            alt="" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} 
+                            onError={(e) => {
+                              const url = photoUrl(photos[0]) ?? '';
+                              setFailedPhotos(prev => ({ ...prev, [url]: true }));
+                              e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                              e.currentTarget.style.objectFit = 'contain';
+                              e.currentTarget.style.padding = '24px';
+                              e.currentTarget.style.background = 'var(--bg)';
+                            }}
+                          />
                         </div>
                       )}
                       <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -510,8 +575,8 @@ export default function AdminPage() {
                               <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>{o.title || o.taxonName}</h4>
                               {o.title && <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', margin: '2px 0 0 0' }}>{o.taxonName}</p>}
                             </div>
-                            <span className="badge badge-grey" style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: '8px' }}>
-                              📁 {o.projectName}
+                            <span className="badge badge-grey" style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <FolderOpen size={11} /> {o.projectName}
                             </span>
                           </div>
 
@@ -521,10 +586,13 @@ export default function AdminPage() {
                               fontSize: 13, 
                               marginTop: 10, 
                               color: 'var(--text)', 
-                              background: '#f8f9fa', 
+                              background: 'var(--bg)', 
                               padding: '10px 14px', 
                               borderRadius: '8px', 
                               borderLeft: '4px solid var(--green)',
+                              borderTop: '1px solid var(--border)',
+                              borderRight: '1px solid var(--border)',
+                              borderBottom: '1px solid var(--border)',
                               boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
                             }}>
                               {o.description && <p style={{ margin: '0 0 6px 0', lineHeight: 1.4 }}><b>Descripción:</b> {o.description}</p>}
@@ -562,14 +630,24 @@ export default function AdminPage() {
                               border: '1px dashed rgba(46,125,50,0.2)', 
                               alignItems: 'center' 
                             }}>
-                              {o.habitatPhotoUrl && (
-                                <img 
-                                  src={photoUrl(o.habitatPhotoUrl) ?? ''} 
-                                  alt="Hábitat" 
-                                  style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }} 
-                                  onClick={() => setLightbox(photoUrl(o.habitatPhotoUrl) ?? '')}
-                                />
-                              )}
+                              {o.habitatPhotoUrl && (() => {
+                                const url = photoUrl(o.habitatPhotoUrl) ?? '';
+                                return (
+                                  <img 
+                                    src={url} 
+                                    alt="Hábitat" 
+                                    style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }} 
+                                    onClick={(e) => { e.stopPropagation(); if (!failedPhotos[url]) setLightbox(url); }}
+                                    onError={(e) => {
+                                      setFailedPhotos(prev => ({ ...prev, [url]: true }));
+                                      e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                                      e.currentTarget.style.objectFit = 'contain';
+                                      e.currentTarget.style.padding = '8px';
+                                      e.currentTarget.style.background = 'var(--white)';
+                                    }}
+                                  />
+                                );
+                              })()}
                               {o.habitatDescription && (
                                 <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.4 }}>
                                   <b>Hábitat:</b> {o.habitatDescription}
@@ -580,8 +658,8 @@ export default function AdminPage() {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--muted)', marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10, fontWeight: 500 }}>
-                          <span>📅 {new Date(o.observedAt).toLocaleString()}</span>
-                          <span>📍 {o.latitude.toFixed(4)}, {o.longitude.toFixed(4)} (×{o.quantity})</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Calendar size={12} /> {new Date(o.observedAt).toLocaleString()}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} /> {o.latitude.toFixed(4)}, {o.longitude.toFixed(4)} (×{o.quantity})</span>
                         </div>
                       </div>
                     </div>

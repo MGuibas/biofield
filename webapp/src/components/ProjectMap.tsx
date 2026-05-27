@@ -80,7 +80,7 @@ export default function ProjectMap({
         <b style="font-size:13px">${obs.taxonName}</b>
         ${obs.title ? `<br><span style="font-size:12px">${obs.title}</span>` : ''}
         <br><small style="color:#666">${new Date(obs.observedAt).toLocaleDateString()}</small>
-        ${editMode ? `<br><small style="color:#2e7d32;font-weight:bold">📍 Arrastra para mover</small>` : `<br><button data-obs-id="${obs.id}" style="margin-top:6px;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Ver detalle →</button>`}
+        ${editMode ? `<br><small style="color:#2e7d32;font-weight:bold">Arrastra para mover</small>` : `<br><button data-obs-id="${obs.id}" style="margin-top:6px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Ver detalle</button>`}
       `
 
       if (editMode) {
@@ -89,20 +89,16 @@ export default function ProjectMap({
           icon: L.divIcon({
             className: 'custom-draggable-marker',
             html: `<div style="
-              width: 24px;
-              height: 24px;
+              width: 20px;
+              height: 20px;
               background: var(--green);
-              border: 2px solid white;
+              border: 2.5px solid white;
               border-radius: 50%;
-              box-shadow: 0 0 0 2px var(--green), 0 2px 8px rgba(0,0,0,0.3);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 14px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
               cursor: move;
-            ">📍</div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            "></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
           })
         })
           .bindPopup(L.popup({ minWidth: 180 }).setContent(div))
@@ -158,7 +154,7 @@ export default function ProjectMap({
           lineCap: 'round',
           lineJoin: 'round'
         })
-          .bindPopup(`<b>📍 Ruta: ${route.name}</b><br>📏 ${(route.distanceMeters / 1000).toFixed(2)} km`)
+          .bindPopup(`<b>Ruta: ${route.name}</b><br>Distancia: ${(route.distanceMeters / 1000).toFixed(2)} km`)
           .addTo(map)
 
         // Hover effects - changes core and glow colors dynamically

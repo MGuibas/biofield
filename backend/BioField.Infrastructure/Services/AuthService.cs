@@ -53,7 +53,10 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         {
             user.GoogleId = payload.Subject;
             user.LastLogin = DateTime.UtcNow;
-            if (string.IsNullOrEmpty(user.AvatarUrl)) user.AvatarUrl = payload.Picture;
+            if (string.IsNullOrEmpty(user.AvatarUrl) || user.AvatarUrl.StartsWith("http")) 
+            {
+                user.AvatarUrl = payload.Picture;
+            }
             if (email == "marcosguibas@gmail.com" && user.Role != "Admin")
             {
                 user.Role = "Admin";
@@ -86,7 +89,7 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
     public async Task<ProfileResponse> GetProfileAsync(Guid userId)
     {
         var user = await db.Users.FindAsync(userId) ?? throw new KeyNotFoundException();
-        return new ProfileResponse(user.Id, user.Email, user.DisplayName, user.AvatarUrl, user.Speciality, user.Institution, user.CreatedAt);
+        return new ProfileResponse(user.Id, user.Email, user.DisplayName, user.GetNormalizedAvatarUrl(), user.Speciality, user.Institution, user.CreatedAt);
     }
 
     public async Task<ProfileResponse> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
@@ -96,7 +99,7 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         user.Speciality = request.Speciality;
         user.Institution = request.Institution;
         await db.SaveChangesAsync();
-        return new ProfileResponse(user.Id, user.Email, user.DisplayName, user.AvatarUrl, user.Speciality, user.Institution, user.CreatedAt);
+        return new ProfileResponse(user.Id, user.Email, user.DisplayName, user.GetNormalizedAvatarUrl(), user.Speciality, user.Institution, user.CreatedAt);
     }
 
     public async Task<string> UploadAvatarAsync(Guid userId, string base64Image, string extension)
@@ -117,7 +120,7 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         await File.WriteAllBytesAsync(Path.Combine(uploadsDir, fileName), bytes);
         user.AvatarUrl = $"/avatars/{fileName}?v={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
         await db.SaveChangesAsync();
-        return user.AvatarUrl;
+        return user.GetNormalizedAvatarUrl() ?? user.AvatarUrl;
     }
 
     private async Task<AuthResponse> GenerateTokensAsync(User user)
@@ -129,7 +132,7 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(30);
         await db.SaveChangesAsync();
 
-        return new AuthResponse(accessToken, refreshToken, user.Id, user.DisplayName, user.Role, user.AvatarUrl);
+        return new AuthResponse(accessToken, refreshToken, user.Id, user.DisplayName, user.Role, user.GetNormalizedAvatarUrl());
     }
 
     private string CreateAccessToken(User user)

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { X, Clock, Video, Compass, MapPin, Info } from 'lucide-react';
+import { X, Clock, Video, Compass, MapPin, Info, Ruler, Eye } from 'lucide-react';
 import Map3D from './Map3D';
 import PlaybackControls from './PlaybackControls';
 import { parseTrackPoints } from '../utils/routeHelpers';
@@ -60,36 +60,35 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
       left: 0,
       width: '100vw',
       height: '100vh',
-      backgroundColor: '#09090b',
+      backgroundColor: 'var(--bg)',
       zIndex: 9999,
       display: 'flex',
       overflow: 'hidden',
-      color: '#f4f4f5',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      color: 'var(--text)'
     }}>
       
       {/* Sidebar Panel */}
       <div style={{
         width: '350px',
-        backgroundColor: '#18181b',
-        borderRight: '1px solid #27272a',
+        backgroundColor: 'var(--white)',
+        borderRight: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
         flexShrink: 0,
         zIndex: 10,
-        boxShadow: '10px 0 30px rgba(0,0,0,0.5)',
+        boxShadow: 'var(--shadow-lg)',
         overflowY: 'auto'
       }}>
         
         {/* Header */}
         <div style={{
           padding: '24px 20px',
-          borderBottom: '1px solid #27272a',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: '#09090b'
+          backgroundColor: 'var(--white)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
@@ -103,8 +102,8 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
               <Compass style={{ color: '#fff', width: '20px', height: '20px' }} />
             </div>
             <div>
-              <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#fff' }}>Simulación 3D</h2>
-              <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Biofield Flight Viewer</span>
+              <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Simulación 3D</h2>
+              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Biofield Flight Viewer</span>
             </div>
           </div>
           <button 
@@ -115,15 +114,15 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
               border: 'none',
               borderRadius: '50%',
               cursor: 'pointer',
-              color: '#a1a1aa',
+              color: 'var(--muted)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'all 0.2s',
               outline: 'none'
             }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#27272a'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#a1a1aa'; }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--green-light)'; e.currentTarget.style.color = 'var(--green)'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--muted)'; }}
             title="Cerrar"
           >
             <X style={{ width: '20px', height: '20px' }} />
@@ -138,7 +137,7 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
             <span style={{
               fontSize: '11px',
               fontWeight: 700,
-              color: '#71717a',
+              color: 'var(--muted)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               display: 'flex',
@@ -149,31 +148,31 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
               <Info style={{ width: '13px', height: '13px' }} /> Detalles de la Ruta
             </span>
             <div style={{
-              backgroundColor: '#09090b',
-              borderRadius: '12px',
+              backgroundColor: 'var(--bg)',
+              borderRadius: 'var(--radius-lg)',
               padding: '16px',
-              border: '1px solid #27272a'
+              border: '1px solid var(--border)'
             }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: '#fff' }}>📍 {route.name}</h3>
-              <p style={{ fontSize: '12px', color: '#a1a1aa', margin: '0 0 12px 0' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text)' }}>{route.name}</h3>
+              <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '0 0 12px 0' }}>
                 Registrada el {new Date(route.startedAt).toLocaleDateString()}
               </p>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: '20px', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                  📏 {(route.distanceMeters / 1000).toFixed(2)} km
+                <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: 'var(--radius)', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Ruler style={{ width: '12px', height: '12px' }} /> {(route.distanceMeters / 1000).toFixed(2)} km
                 </span>
-                <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: '20px', backgroundColor: 'rgba(76, 175, 80, 0.1)', color: '#4caf50', border: '1px solid rgba(76, 175, 80, 0.2)' }}>
-                  🔬 {obsInRoute.length} obs.
+                <span style={{ fontSize: '11px', fontWeight: 600, padding: '4px 8px', borderRadius: 'var(--radius)', backgroundColor: 'var(--green-light)', color: 'var(--green)', border: '1px solid rgba(46, 125, 50, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Eye style={{ width: '12px', height: '12px' }} /> {obsInRoute.length} obs.
                 </span>
               </div>
               {route.notes && (
                 <p style={{
                   fontSize: '12px',
                   lineHeight: '1.5',
-                  color: '#a1a1aa',
+                  color: 'var(--muted)',
                   margin: '12px 0 0 0',
                   paddingTop: '12px',
-                  borderTop: '1px solid #27272a',
+                  borderTop: '1px solid var(--border)',
                   fontStyle: 'italic'
                 }}>{route.notes}</p>
               )}
@@ -185,7 +184,7 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
             <span style={{
               fontSize: '11px',
               fontWeight: 700,
-              color: '#71717a',
+              color: 'var(--muted)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               display: 'flex',
@@ -200,9 +199,9 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
               
               {/* Fly duration */}
               <div>
-                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#a1a1aa', marginBottom: '8px' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--muted)', marginBottom: '8px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Clock style={{ width: '13px', height: '13px' }}/> Duración del Vuelo</span>
-                  <span style={{ fontWeight: 'bold', color: '#fff', fontFamily: 'monospace' }}>{targetDuration}s</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--text)', fontFamily: 'monospace' }}>{targetDuration}s</span>
                 </label>
                 <input 
                   type="range" 
@@ -213,7 +212,7 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
                   onChange={(e) => setTargetDuration(Number(e.target.value))} 
                   style={{
                     width: '100%',
-                    accentColor: '#4caf50',
+                    accentColor: 'var(--green)',
                     cursor: 'pointer'
                   }}
                 />
@@ -222,14 +221,14 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
               {/* Smart Camera Mode */}
               <div style={{
                 paddingTop: '16px',
-                borderTop: '1px solid #27272a'
+                borderTop: '1px solid var(--border)'
               }}>
                 <label style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
                   fontSize: '13px',
-                  color: '#fff',
+                  color: 'var(--text)',
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}>
@@ -249,7 +248,7 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
                       width: '36px',
                       height: '20px',
                       borderRadius: '10px',
-                      backgroundColor: autoCamera ? '#4caf50' : '#3f3f46',
+                      backgroundColor: autoCamera ? 'var(--green)' : '#3f3f46',
                       transition: 'background-color 0.2s',
                       position: 'relative'
                     }}>
@@ -268,7 +267,7 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
                   </div>
                   Cámara Dinámica Inteligente
                 </label>
-                <p style={{ fontSize: '11px', color: '#71717a', marginTop: '6px', lineHeight: '1.4' }}>
+                <p style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '6px', lineHeight: '1.4' }}>
                   Ajusta automáticamente el zoom e inclinación según la distancia y curvas del trayecto.
                 </p>
               </div>
@@ -280,14 +279,14 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
                   flexDirection: 'column',
                   gap: '16px',
                   padding: '14px',
-                  backgroundColor: '#09090b',
-                  borderRadius: '10px',
-                  border: '1px solid #27272a'
+                  backgroundColor: 'var(--bg)',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid var(--border)'
                 }}>
                   <div>
-                    <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#a1a1aa', marginBottom: '6px' }}>
+                    <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--muted)', marginBottom: '6px' }}>
                       <span>Zoom (Cercanía)</span>
-                      <span style={{ color: '#fff', fontWeight: 'bold', fontFamily: 'monospace' }}>{zoomLevel}x</span>
+                      <span style={{ color: 'var(--text)', fontWeight: 'bold', fontFamily: 'monospace' }}>{zoomLevel}x</span>
                     </label>
                     <input 
                       type="range" 
@@ -296,14 +295,14 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
                       step="0.5" 
                       value={zoomLevel} 
                       onChange={(e) => setZoomLevel(Number(e.target.value))} 
-                      style={{ width: '100%', accentColor: '#4caf50', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: 'var(--green)', cursor: 'pointer' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#a1a1aa', marginBottom: '6px' }}>
+                    <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--muted)', marginBottom: '6px' }}>
                       <span>Ángulo de visión (Pitch)</span>
-                      <span style={{ color: '#fff', fontWeight: 'bold', fontFamily: 'monospace' }}>{lookAheadPitch}°</span>
+                      <span style={{ color: 'var(--text)', fontWeight: 'bold', fontFamily: 'monospace' }}>{lookAheadPitch}°</span>
                     </label>
                     <input 
                       type="range" 
@@ -312,7 +311,7 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
                       step="1" 
                       value={lookAheadPitch} 
                       onChange={(e) => setLookAheadPitch(Number(e.target.value))} 
-                      style={{ width: '100%', accentColor: '#4caf50', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: 'var(--green)', cursor: 'pointer' }}
                     />
                   </div>
                 </div>
@@ -326,7 +325,7 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
             <span style={{
               fontSize: '11px',
               fontWeight: 700,
-              color: '#71717a',
+              color: 'var(--muted)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               display: 'flex',
@@ -351,29 +350,29 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
                   onClick={() => onObsClick?.(obs)}
                   style={{
                     padding: '10px 12px',
-                    backgroundColor: '#09090b',
-                    borderRadius: '8px',
-                    border: '1px solid #27272a',
+                    backgroundColor: 'var(--bg)',
+                    borderRadius: 'var(--radius)',
+                    border: '1px solid var(--border)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '2px'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = '#4caf50'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = '#27272a'}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--green)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
                 >
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>{obs.taxonName}</span>
-                  {obs.title && <span style={{ fontSize: '11px', color: '#a1a1aa' }}>{obs.title}</span>}
-                  <span style={{ fontSize: '10px', color: '#52525b', fontFamily: 'monospace', marginTop: '4px' }}>
-                    📍 {obs.latitude.toFixed(5)}, {obs.longitude.toFixed(5)}
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{obs.taxonName}</span>
+                  {obs.title && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{obs.title}</span>}
+                  <span style={{ fontSize: '10px', color: 'var(--muted)', fontFamily: 'monospace', marginTop: '4px' }}>
+                    {obs.latitude.toFixed(5)}, {obs.longitude.toFixed(5)}
                   </span>
                 </div>
               ))}
               {obsInRoute.length === 0 && (
                 <div style={{
                   fontSize: '12px',
-                  color: '#71717a',
+                  color: 'var(--muted)',
                   fontStyle: 'italic',
                   textAlign: 'center',
                   padding: '20px 0'
@@ -403,11 +402,11 @@ export default function Route3DModal({ route, obsInRoute, onClose, onObsClick }:
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#09090b',
-            color: '#a1a1aa',
+            backgroundColor: 'var(--bg)',
+            color: 'var(--muted)',
             gap: '12px'
           }}>
-            <Compass style={{ width: '48px', height: '48px', color: '#3f3f46' }} />
+            <Compass style={{ width: '48px', height: '48px', color: 'var(--border)' }} />
             <p style={{ fontSize: '14px' }}>Esta ruta no posee suficientes coordenadas grabadas para generar una trayectoria 3D.</p>
           </div>
         ) : (

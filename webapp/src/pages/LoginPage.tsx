@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
+import { Sprout } from 'lucide-react'
 
 // Google Client ID — Web client (auto created by Google Service)
 const GOOGLE_CLIENT_ID = '263021632716-esq3clgbajg306ogo0i26eimsm5b4l22.apps.googleusercontent.com'
@@ -20,10 +21,8 @@ declare global {
 }
 
 export default function LoginPage() {
-  const { login, loginWithGoogleToken, user } = useAuth()
+  const { loginWithGoogleToken, user } = useAuth()
   const nav = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const googleBtnRef = useRef<HTMLDivElement>(null)
@@ -54,7 +53,6 @@ export default function LoginPage() {
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: async (response: { credential: string }) => {
-        // response.credential ES el Google ID Token — igual que en Flutter
         setLoading(true)
         setError('')
         try {
@@ -77,60 +75,33 @@ export default function LoginPage() {
     })
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-      await login(email, password)
-      nav('/projects')
-    } catch {
-      setError('Email o contraseña incorrectos')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="card" style={{ width: 360 }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <span style={{ fontSize: 32 }}>🌿</span>
-          <h1 style={{ fontSize: 22, color: 'var(--green)', marginTop: 4 }}>BioField</h1>
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Panel web</p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+      <div className="card" style={{ width: 360, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
+          <div style={{
+            width: 54,
+            height: 54,
+            borderRadius: '12px',
+            background: 'var(--green-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--green)',
+            marginBottom: 12
+          }}>
+            <Sprout size={32} />
+          </div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--green)', margin: 0, letterSpacing: '-0.02em' }}>BioField</h1>
+          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4, fontWeight: 500 }}>Panel web</p>
         </div>
 
-        {/* Botón oficial de Google — sin popup ni redirect problemáticos */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <div ref={googleBtnRef} />
+        {/* Botón oficial de Google */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+          <div ref={googleBtnRef} style={{ height: 44 }} />
+          {loading && <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 12 }}>Iniciando sesión...</p>}
+          {error && <p style={{ color: '#c62828', fontSize: 13, marginTop: 12, textAlign: 'center', fontWeight: 500 }}>{error}</p>}
         </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0', color: 'var(--muted)', fontSize: 12 }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          o
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        </div>
-
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-          />
-          {error && <p style={{ color: '#c62828', fontSize: 13, margin: 0 }}>{error}</p>}
-          <button className="btn-primary" type="submit" disabled={loading}>
-            {loading ? 'Entrando...' : 'Iniciar sesión'}
-          </button>
-        </form>
       </div>
     </div>
   )
